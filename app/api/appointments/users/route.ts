@@ -3,6 +3,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongoose';
 import FormData from '@/models/FormData';
 
+/**
+ * GET /api/appointments/users
+ * Search for users to invite to appointments
+ * 
+ * Query Parameters:
+ * - search: Search term (name, username, or employee ID)
+ * - currentUsername: Current user's username (to exclude from results)
+ * 
+ * Returns: Array of users with their details
+ */
 export async function GET(request: NextRequest) {
   try {
     await dbConnect();
@@ -11,49 +21,65 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const currentUsername = searchParams.get('currentUsername');
     
+    if (!currentUsername) {
+      return NextResponse.json({ 
+        error: 'Current username is required' 
+      }, { status: 400 });
+    }
+    
     // Build query - uses compound index: { department: 1, status: 1 }
     const query: any = {
-      status: 'approved', // Indexed field first
-      username: { $ne: currentUsername }
+      status: 'approved', // Only approved users can be invited
+      username: { $ne: currentUsername } // Exclude current user
     };
     
     let users;
     
-    // If search term provided, use text index for efficient searching
     if (search && search.trim().length > 0) {
       const searchTerm = search.trim();
       
-      // Use text search index for name, father name, and email
-      query.$text = { $search: searchTerm };
+      // Search in multiple fields
+      // Uses text index if available, otherwise uses regex
+      query.$or = [
+        { 'basicDetails.name': { $regex: searchTerm, $options: 'i' } },
+        { username: { $regex: searchTerm, $options: 'i' } },
+        { employeeNumber: { $regex: searchTerm, $options: 'i' } },
+        { 'contactInformation.email': { $regex: searchTerm, $options: 'i' } }
+      ];
       
       users = await FormData.find(query)
         .select('username basicDetails.name department title employeeNumber contactInformation.email')
-        .limit(100)
-        .sort({ score: { $meta: 'textScore' } }); // Sort by text relevance
+        .limit(50)
+        .sort({ 'basicDetails.name': 1 })
+        .lean();
     } else {
-      // No search - just get approved users sorted by name
+      // No search term - return recent approved users
       users = await FormData.find(query)
         .select('username basicDetails.name department title employeeNumber contactInformation.email')
-        .limit(100)
-        .sort({ 'basicDetails.name': 1 }); // Uses index: { 'basicDetails.name': 1 }
+        .limit(20)
+        .sort({ 'basicDetails.name': 1 })
+        .lean();
     }
     
-    console.log(`Found ${users.length} users for search "${search}"`);
+    // Format response
+    const formattedUsers = users.map(user => ({
+      username: user.username,
+      displayName: user.basicDetails?.name || user.username,
+      department: user.department || 'No Department',
+      title: user.title || 'No Title',
+      employeeId: user.employeeNumber || user.username,
+      email: user.contactInformation?.email || ''
+    }));
     
     return NextResponse.json({ 
-      users: users.map(user => ({
-        username: user.username,
-        displayName: user.basicDetails?.name || user.username,
-        department: user.department || 'No Department',
-        title: user.title || 'No Title',
-        employeeId: user.employeeNumber || user.username,
-        email: user.contactInformation?.email || ''
-      })), 
+      users: formattedUsers, 
       success: true,
-      count: users.length
+      count: formattedUsers.length
     });
   } catch (error: any) {
-    console.error('Users GET error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Users search error:', error);
+    return NextResponse.json({ 
+      error: error.message || 'Failed to search users' 
+    }, { status: 500 });
   }
 }

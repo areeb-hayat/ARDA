@@ -2,6 +2,7 @@
 // app/components/ticketing/DynamicFormField.tsx
 // Renders form fields based on formSchema
 // NOW WITH IMPROVED FILE UPLOAD UI AND THEME CONTEXT
+// FIXED: Files are now properly converted to base64 for upload
 // ============================================
 
 import React, { useState, useRef } from 'react';
@@ -49,11 +50,13 @@ export default function DynamicFormField({ field, value, onChange, error }: Prop
 
   const inputClasses = `w-full px-4 py-3 rounded-xl text-sm transition-all duration-300 focus:outline-none ${colors.inputBg} border ${error ? cardCharacters.urgent.border : colors.inputBorder} ${colors.inputText} ${colors.inputPlaceholder}`;
 
-  // File upload handlers
-  const handleFileSelect = (files: FileList | null) => {
+  // File upload handlers - FIXED TO SEND BASE64 DATA
+  const handleFileSelect = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
-    const newFiles: FileWithPreview[] = Array.from(files).map(file => {
+    const newFiles: FileWithPreview[] = [];
+    
+    for (const file of Array.from(files)) {
       const fileWithPreview: FileWithPreview = {
         file,
         id: `${Date.now()}-${Math.random()}`
@@ -68,11 +71,35 @@ export default function DynamicFormField({ field, value, onChange, error }: Prop
         reader.readAsDataURL(file);
       }
 
-      return fileWithPreview;
+      newFiles.push(fileWithPreview);
+    }
+
+    const updatedFiles = [...uploadedFiles, ...newFiles];
+    setUploadedFiles(updatedFiles);
+    
+    // Convert files to base64 for upload
+    const fileDataPromises = updatedFiles.map(async (f) => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64String = reader.result as string;
+          // Remove the data:mime/type;base64, prefix
+          const base64Data = base64String.includes(',') 
+            ? base64String.split(',')[1] 
+            : base64String;
+          
+          resolve({
+            name: f.file.name,
+            data: base64Data,
+            type: f.file.type
+          });
+        };
+        reader.readAsDataURL(f.file);
+      });
     });
 
-    setUploadedFiles(prev => [...prev, ...newFiles]);
-    onChange([...uploadedFiles, ...newFiles].map(f => f.file.name).join(', '));
+    const fileDataArray = await Promise.all(fileDataPromises);
+    onChange(fileDataArray);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -94,10 +121,37 @@ export default function DynamicFormField({ field, value, onChange, error }: Prop
     handleFileSelect(e.dataTransfer.files);
   };
 
-  const removeFile = (id: string) => {
+  const removeFile = async (id: string) => {
     const newFiles = uploadedFiles.filter(f => f.id !== id);
     setUploadedFiles(newFiles);
-    onChange(newFiles.map(f => f.file.name).join(', '));
+    
+    if (newFiles.length === 0) {
+      onChange([]);
+      return;
+    }
+    
+    // Convert remaining files to base64
+    const fileDataPromises = newFiles.map(async (f) => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64String = reader.result as string;
+          const base64Data = base64String.includes(',') 
+            ? base64String.split(',')[1] 
+            : base64String;
+          
+          resolve({
+            name: f.file.name,
+            data: base64Data,
+            type: f.file.type
+          });
+        };
+        reader.readAsDataURL(f.file);
+      });
+    });
+
+    const fileDataArray = await Promise.all(fileDataPromises);
+    onChange(fileDataArray);
   };
 
   const getFileIcon = (fileName: string) => {

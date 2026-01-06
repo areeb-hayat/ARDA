@@ -1,8 +1,7 @@
 // ============================================
 // app/components/ticketing/TicketActionsPanel.tsx
 // Main panel with tabs - Details first, then Actions
-// Orchestrates TicketDetailsView and TicketActionsList
-// UPDATED WITH THEME CONTEXT
+// UPDATED WITH THEME CONTEXT MODAL STYLES
 // ============================================
 
 'use client';
@@ -51,7 +50,7 @@ interface WorkflowPosition {
 }
 
 export default function TicketActionsPanel({ ticket, userId, userName, onClose, onUpdate }: Props) {
-  const { colors, cardCharacters } = useTheme();
+  const { colors, cardCharacters, getModalStyles } = useTheme();
   const charColors = cardCharacters.informative;
   
   const [activeTab, setActiveTab] = useState<'details' | 'actions'>('details');
@@ -158,121 +157,119 @@ export default function TicketActionsPanel({ ticket, userId, userName, onClose, 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+    <div className={getModalStyles()}>
+      <div className="absolute inset-0 modal-backdrop" onClick={onClose} aria-hidden="true" />
+      
       <div 
-        className="w-full max-w-3xl max-h-[90vh] rounded-2xl overflow-hidden flex flex-col shadow-2xl border-2 animate-in zoom-in duration-300 bg-white dark:bg-[#0a0a1a]"
-        style={{ borderColor: charColors.border.replace('border-', '') }}
+        className={`
+          relative rounded-2xl border ${colors.modalBorder}
+          ${colors.modalBg} ${colors.modalShadow}
+          w-full max-w-3xl
+          modal-content flex flex-col
+        `}
+        style={{ overflow: 'hidden' }}
       >
-        {/* Header */}
-        <div 
-          className={`relative overflow-hidden p-6 border-b-2 flex items-center justify-between bg-gradient-to-br ${charColors.bg} backdrop-blur-sm`}
-          style={{ borderColor: charColors.border.replace('border-', '') }}
-        >
-          <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
-          
-          <div className="relative flex-1">
-            <h2 className={`text-2xl font-black ${charColors.text} mb-1`}>
-              {ticket.ticketNumber}
-            </h2>
-            <p className={`text-sm ${colors.textSecondary}`}>
-              {ticket.functionalityName}
-            </p>
-            {isGroupMember && (
-              <p className={`text-xs mt-2 font-semibold flex items-center gap-1.5 ${cardCharacters.creative.text}`}>
-                {isGroupLead ? '👑 Group Lead' : '👥 Group Member'}
-              </p>
-            )}
-          </div>
-          
-          <button
-            onClick={onClose}
-            className={`group relative w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 overflow-hidden border-2 bg-gradient-to-br ${colors.cardBg} ${cardCharacters.urgent.border} hover:${cardCharacters.urgent.border}`}
-          >
-            <div 
-              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-              style={{ boxShadow: `inset 0 0 20px ${colors.glowWarning}` }}
-            ></div>
-            <X className={`w-5 h-5 relative z-10 transition-transform duration-300 group-hover:rotate-90 ${cardCharacters.urgent.iconColor}`} />
-          </button>
-        </div>
+        <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03] pointer-events-none`}></div>
 
-        {/* Tabs */}
-        <div 
-          className={`relative flex border-b-2 bg-gradient-to-br ${colors.cardBg} backdrop-blur-sm`}
-          style={{ borderColor: charColors.border.replace('border-', '') }}
-        >
-          <button
-            onClick={() => setActiveTab('details')}
-            className={`flex-1 px-6 py-3.5 font-bold text-sm transition-all duration-300 relative ${
-              activeTab === 'details'
-                ? charColors.accent
-                : colors.textSecondary
-            }`}
-          >
-            {activeTab === 'details' && (
-              <div 
-                className="absolute bottom-0 left-0 right-0 h-1 rounded-t-full"
-                style={{ backgroundColor: charColors.iconColor.replace('text-', '') }}
-              />
-            )}
-            <span className="relative z-10">Details</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('actions')}
-            className={`flex-1 px-6 py-3.5 font-bold text-sm transition-all duration-300 relative ${
-              activeTab === 'actions'
-                ? charColors.accent
-                : colors.textSecondary
-            }`}
-          >
-            {activeTab === 'actions' && (
-              <div 
-                className="absolute bottom-0 left-0 right-0 h-1 rounded-t-full"
-                style={{ backgroundColor: charColors.iconColor.replace('text-', '') }}
-              />
-            )}
-            <span className="relative z-10">Actions</span>
-          </button>
+        {/* Header */}
+        <div className={`
+          relative px-6 py-4 border-b ${colors.modalFooterBorder}
+          ${colors.modalHeaderBg}
+        `}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex-1">
+              <h2 className={`text-2xl font-black ${colors.modalHeaderText} mb-1`}>
+                {ticket.ticketNumber}
+              </h2>
+              <p className={`text-sm ${colors.textSecondary}`}>
+                {ticket.functionalityName}
+              </p>
+              {isGroupMember && (
+                <p className={`text-xs mt-2 font-semibold flex items-center gap-1.5 ${cardCharacters.creative.text}`}>
+                  {isGroupLead ? '👑 Group Lead' : '👥 Group Member'}
+                </p>
+              )}
+            </div>
+            
+            <button
+              onClick={onClose}
+              className={`group relative p-2 rounded-lg transition-all duration-300 ${colors.buttonGhost} ${colors.buttonGhostText}`}
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActiveTab('details')}
+              className={`flex-1 px-6 py-3 font-bold text-sm transition-all duration-300 rounded-t-lg relative ${
+                activeTab === 'details'
+                  ? charColors.accent
+                  : colors.textSecondary
+              }`}
+            >
+              {activeTab === 'details' && (
+                <div 
+                  className="absolute bottom-0 left-0 right-0 h-1 rounded-t-full"
+                  style={{ backgroundColor: charColors.iconColor.replace('text-', '') }}
+                />
+              )}
+              <span className="relative z-10">Details</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('actions')}
+              className={`flex-1 px-6 py-3 font-bold text-sm transition-all duration-300 rounded-t-lg relative ${
+                activeTab === 'actions'
+                  ? charColors.accent
+                  : colors.textSecondary
+              }`}
+            >
+              {activeTab === 'actions' && (
+                <div 
+                  className="absolute bottom-0 left-0 right-0 h-1 rounded-t-full"
+                  style={{ backgroundColor: charColors.iconColor.replace('text-', '') }}
+                />
+              )}
+              <span className="relative z-10">Actions</span>
+            </button>
+          </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {activeTab === 'details' ? (
-            <TicketDetailsView 
-              ticket={ticket}
-              workflowPosition={workflowPosition}
-            />
-          ) : (
-            <TicketActionsList
-              ticket={ticket}
-              userId={userId}
-              userName={userName}
-              workflowPosition={workflowPosition}
-              canTakeActions={canTakeActions}
-              isGroupLead={isGroupLead}
-              isGroupMember={isGroupMember}
-              onActionPerform={performAction}
-              loading={loading}
-            />
-          )}
+        <div className={`relative p-6 ${colors.modalContentBg} max-h-[calc(90vh-200px)] overflow-y-auto`}>
+          <div className={colors.modalContentText}>
+            {activeTab === 'details' ? (
+              <TicketDetailsView 
+                ticket={ticket}
+                workflowPosition={workflowPosition}
+              />
+            ) : (
+              <TicketActionsList
+                ticket={ticket}
+                userId={userId}
+                userName={userName}
+                workflowPosition={workflowPosition}
+                canTakeActions={canTakeActions}
+                isGroupLead={isGroupLead}
+                isGroupMember={isGroupMember}
+                onActionPerform={performAction}
+                loading={loading}
+              />
+            )}
+          </div>
         </div>
 
         {/* Footer */}
-        <div 
-          className={`relative overflow-hidden p-6 border-t-2 bg-gradient-to-br ${colors.cardBg} backdrop-blur-sm`}
-          style={{ borderColor: charColors.border.replace('border-', '') }}
-        >
-          <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
-          
+        <div className={`
+          relative px-6 py-4 border-t ${colors.modalFooterBorder}
+          ${colors.modalFooterBg}
+        `}>
           <button
             onClick={onClose}
-            className={`group relative w-full px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 overflow-hidden border-2 ${colors.inputBg} ${colors.inputBorder} ${colors.textPrimary}`}
+            className={`group relative w-full px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 overflow-hidden border-2 ${colors.buttonSecondary} ${colors.buttonSecondaryText}`}
           >
-            <div 
-              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-              style={{ boxShadow: `inset 0 0 20px ${colors.glowPrimary}` }}
-            ></div>
-            <span className="relative z-10">Close</span>
+            Close
           </button>
         </div>
       </div>

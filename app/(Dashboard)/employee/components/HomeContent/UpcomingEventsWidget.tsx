@@ -1,21 +1,35 @@
-// app/(Dashboard)/employee/components/HomeContent/UpcomingEventsWidget.tsx
+// app/(Dashboard)/dept-head/components/HomeContent/UpcomingEventsWidget.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { CalendarDays, Clock, ArrowRight } from 'lucide-react';
+import { CalendarDays, Clock, ArrowRight, MapPin, Users } from 'lucide-react';
 import { useTheme, useCardCharacter } from '@/app/context/ThemeContext';
 
-interface Event {
+interface TimeIntent {
   _id: string;
+  userId: string;
+  type: 'task' | 'deadline' | 'meeting' | 'reminder';
   title: string;
   description?: string;
-  startDate: string;
-  endDate?: string;
   startTime?: string;
   endTime?: string;
-  type?: string;
+  allDay: boolean;
+  priority: 'low' | 'medium' | 'high';
   color?: string;
-  isAllDay?: boolean;
+  location?: string;
+  attendees?: string[];
+  isCompleted: boolean;
+  completedAt?: string;
+  hasReminder: boolean;
+  reminderMinutesBefore?: number;
+  isSystemGenerated: boolean;
+  createdBy?: string;
+  isRecurring: boolean;
+  recurringPattern?: {
+    frequency: 'daily' | 'weekly' | 'monthly';
+    interval: number;
+    endDate?: string;
+  };
 }
 
 interface UpcomingEventsWidgetProps {
@@ -25,7 +39,7 @@ interface UpcomingEventsWidgetProps {
 export default function UpcomingEventsWidget({ onViewAll }: UpcomingEventsWidgetProps) {
   const { colors, theme } = useTheme();
   const informativeChar = useCardCharacter('informative');
-  const [events, setEvents] = useState<Event[]>([]);
+  const [events, setEvents] = useState<TimeIntent[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,30 +50,33 @@ export default function UpcomingEventsWidget({ onViewAll }: UpcomingEventsWidget
     try {
       const userData = localStorage.getItem('user');
       if (!userData) {
-        console.log('❌ No user data in localStorage');
+        console.log('❌ Employee UpcomingEvents: No user data in localStorage');
         setLoading(false);
         return;
       }
       
       const user = JSON.parse(userData);
-      const userId = user.username;
+      console.log('👤 Employee UpcomingEvents: Full user object:', user);
+      
+      // Use _id as userId (MongoDB ObjectId)
+      const userId = user._id;
       
       if (!userId) {
-        console.error('❌ No user ID found in user object:', user);
+        console.error('❌ Employee UpcomingEvents: No user ID found in user object:', user);
         setLoading(false);
         return;
       }
       
-      console.log('📅 === UPCOMING EVENTS FETCH START ===');
+      console.log('📅 Employee UpcomingEvents: === FETCH START ===');
       console.log('👤 User ID:', userId);
       
       const now = new Date();
       
-      // Get a range from today to 10 days in the future to ensure we capture everything
-      const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 10);
+      // Get a range from tomorrow to 10 days in the future
+      const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 11);
 
-      console.log('📅 Date range:', {
+      console.log('📅 Employee UpcomingEvents: Date range:', {
         start: startDate.toISOString(),
         end: endDate.toISOString()
       });
@@ -70,35 +87,60 @@ export default function UpcomingEventsWidget({ onViewAll }: UpcomingEventsWidget
         endDate: endDate.toISOString(),
       });
 
-      const apiUrl = `/api/calendar?${params}`;
-      console.log('🌐 API URL:', apiUrl);
+      const apiUrl = `/api/calendar/events?${params}`;
+      console.log('🌐 Employee UpcomingEvents: API URL:', apiUrl);
 
       const response = await fetch(apiUrl);
       
+      console.log('📡 Employee UpcomingEvents: Response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ API Response:', data.events?.length || 0, 'total events');
+        console.log('✅ Employee UpcomingEvents: API Response:', {
+          totalEvents: data.events?.length || 0,
+          events: data.events
+        });
         
-        // Filter to upcoming events (after today) on the client side
+        // Filter to upcoming events (after today) and not completed
         const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        today.setHours(23, 59, 59, 999);
         
         const upcomingEvents = (data.events || [])
-          .filter((event: Event) => new Date(event.startDate) > today)
-          .sort((a: Event, b: Event) => 
-            new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
-          )
+          .filter((event: TimeIntent) => {
+            if (event.isCompleted) {
+              console.log('Filtering out completed event:', event.title);
+              return false;
+            }
+            
+            const eventDate = event.startTime ? new Date(event.startTime) : null;
+            const isUpcoming = eventDate && eventDate > today;
+            
+            console.log('Event check:', {
+              title: event.title,
+              eventDate: eventDate?.toISOString(),
+              isUpcoming,
+              isCompleted: event.isCompleted
+            });
+            
+            return isUpcoming;
+          })
+          .sort((a: TimeIntent, b: TimeIntent) => {
+            const timeA = a.startTime ? new Date(a.startTime).getTime() : 0;
+            const timeB = b.startTime ? new Date(b.startTime).getTime() : 0;
+            return timeA - timeB;
+          })
           .slice(0, 3);
         
-        console.log('📊 Upcoming events to display:', upcomingEvents.length);
+        console.log('📊 Employee UpcomingEvents: Upcoming events to display:', upcomingEvents.length, upcomingEvents);
         setEvents(upcomingEvents);
       } else {
-        console.error('❌ API request failed:', response.status);
+        const errorText = await response.text();
+        console.error('❌ Employee UpcomingEvents: API request failed:', response.status, errorText);
       }
       
-      console.log('📅 === UPCOMING EVENTS FETCH END ===');
+      console.log('📅 Employee UpcomingEvents: === FETCH END ===');
     } catch (error) {
-      console.error('💥 Error fetching upcoming events:', error);
+      console.error('💥 Employee UpcomingEvents: Error fetching upcoming events:', error);
     } finally {
       setLoading(false);
     }
@@ -117,6 +159,14 @@ export default function UpcomingEventsWidget({ onViewAll }: UpcomingEventsWidget
       return 'Tomorrow';
     }
     
+    // Calculate days until event
+    const diffTime = eventDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays <= 7) {
+      return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    }
+    
     return date.toLocaleDateString('en-US', { 
       month: 'short', 
       day: 'numeric',
@@ -124,29 +174,24 @@ export default function UpcomingEventsWidget({ onViewAll }: UpcomingEventsWidget
     });
   };
 
-  const formatTime = (event: Event) => {
-    if (event.isAllDay) {
+  const formatTime = (event: TimeIntent) => {
+    if (event.allDay) {
       return 'All Day';
     }
     
-    if (event.startTime && event.endTime) {
-      return `${event.startTime} - ${event.endTime}`;
+    if (!event.startTime) {
+      return 'No time set';
     }
     
-    if (event.startTime) {
-      return event.startTime;
-    }
-    
-    // Fallback to date formatting
-    const start = new Date(event.startDate);
+    const start = new Date(event.startTime);
     const timeStr = start.toLocaleTimeString('en-US', { 
       hour: 'numeric', 
       minute: '2-digit',
       hour12: true 
     });
     
-    if (event.endDate) {
-      const end = new Date(event.endDate);
+    if (event.endTime) {
+      const end = new Date(event.endTime);
       const endTimeStr = end.toLocaleTimeString('en-US', { 
         hour: 'numeric', 
         minute: '2-digit',
@@ -158,7 +203,7 @@ export default function UpcomingEventsWidget({ onViewAll }: UpcomingEventsWidget
     return timeStr;
   };
 
-  const getTypeColor = (type?: string) => {
+  const getTypeColor = (type: string) => {
     if (theme === 'dark') {
       switch (type) {
         case 'task':
@@ -186,6 +231,29 @@ export default function UpcomingEventsWidget({ onViewAll }: UpcomingEventsWidget
           return 'bg-gray-500/10 text-gray-600';
       }
     }
+  };
+
+  const getPriorityIndicator = (priority: string) => {
+    const sizes = {
+      low: 'w-2 h-2',
+      medium: 'w-2.5 h-2.5',
+      high: 'w-3 h-3'
+    };
+
+    const colors = theme === 'dark' ? {
+      low: 'bg-[#81C784]',
+      medium: 'bg-[#FFB74D]',
+      high: 'bg-[#EF5350]'
+    } : {
+      low: 'bg-green-500',
+      medium: 'bg-yellow-500',
+      high: 'bg-red-500'
+    };
+
+    return (
+      <div className={`${sizes[priority as keyof typeof sizes]} ${colors[priority as keyof typeof colors]} rounded-full`} 
+           title={`${priority} priority`} />
+    );
   };
 
   if (loading) {
@@ -257,13 +325,14 @@ export default function UpcomingEventsWidget({ onViewAll }: UpcomingEventsWidget
                         color: accentColor
                       }}
                     >
-                      {formatDate(event.startDate)}
+                      {formatDate(event.startTime!)}
                     </span>
                     {event.type && (
                       <span className={`px-2 py-0.5 rounded-md text-xs font-bold capitalize ${getTypeColor(event.type)}`}>
                         {event.type}
                       </span>
                     )}
+                    {getPriorityIndicator(event.priority)}
                   </div>
                   
                   <h4 className={`${colors.textPrimary} font-bold text-sm mb-1.5 truncate group-hover:${colors.textAccent} transition-colors`}>
@@ -277,6 +346,24 @@ export default function UpcomingEventsWidget({ onViewAll }: UpcomingEventsWidget
                         {formatTime(event)}
                       </span>
                     </div>
+                    
+                    {event.location && (
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className={`w-3.5 h-3.5 ${colors.textMuted}`} />
+                        <span className={`${colors.textMuted} text-xs truncate`}>
+                          {event.location}
+                        </span>
+                      </div>
+                    )}
+
+                    {event.attendees && event.attendees.length > 0 && (
+                      <div className="flex items-center gap-1.5">
+                        <Users className={`w-3.5 h-3.5 ${colors.textMuted}`} />
+                        <span className={`${colors.textMuted} text-xs`}>
+                          {event.attendees.length} attendee{event.attendees.length !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    )}
                     
                     {event.description && (
                       <p className={`${colors.textMuted} text-xs truncate`}>

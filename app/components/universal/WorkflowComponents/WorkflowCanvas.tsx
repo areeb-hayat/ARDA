@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ZoomIn, ZoomOut, Move, Trash2, Maximize2, Eye } from 'lucide-react';
+import { ZoomIn, ZoomOut, Move, Trash2, Maximize2, Eye, X } from 'lucide-react';
 import { WorkflowNode as WorkflowNodeType, WorkflowEdge, Employee } from './types';
 import WorkflowNode from './WorkflowNode';
 import { useTheme } from '@/app/context/ThemeContext';
@@ -44,7 +44,10 @@ export default function WorkflowCanvas({
   const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [showMinimap, setShowMinimap] = useState(false);
+  const [showQuickGuide, setShowQuickGuide] = useState(true);
+  const [isGuideHovered, setIsGuideHovered] = useState(false);
   const autoPanRef = useRef<number | null>(null);
+  const hasAutoFitted = useRef<boolean>(false);
 
   const canvasColors = {
     background: theme === 'dark' ? '#0a0a1a' : '#f5f7fa',
@@ -65,6 +68,18 @@ export default function WorkflowCanvas({
     minimapNode: theme === 'dark' ? '#64B5F6' : '#2196F3',
     minimapViewport: theme === 'dark' ? 'rgba(100, 181, 246, 0.3)' : 'rgba(33, 150, 243, 0.25)',
   };
+
+  // Auto-fit to view on initial load
+  useEffect(() => {
+    if (nodes.length >= 2 && !hasAutoFitted.current) {
+      // Small delay to ensure canvas is properly rendered
+      const timer = setTimeout(() => {
+        fitToView();
+        hasAutoFitted.current = true;
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [nodes.length]);
 
   useEffect(() => {
     const rect = canvasRef.current?.getBoundingClientRect();
@@ -585,7 +600,7 @@ export default function WorkflowCanvas({
       <div className="absolute bottom-4 right-4 flex flex-col gap-2 z-10">
         <button
           onClick={fitToView}
-          className="w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 border-2 shadow-lg"
+          className="w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 border-2 shadow-lg hover:scale-110"
           style={{ 
             background: canvasColors.controlBg,
             borderColor: canvasColors.controlBorder,
@@ -597,7 +612,7 @@ export default function WorkflowCanvas({
         </button>
         <button
           onClick={() => setShowMinimap(!showMinimap)}
-          className="w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 border-2 shadow-lg"
+          className="w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 border-2 shadow-lg hover:scale-110"
           style={{ 
             background: showMinimap ? canvasColors.connectionLine : canvasColors.controlBg,
             borderColor: canvasColors.controlBorder,
@@ -609,7 +624,7 @@ export default function WorkflowCanvas({
         </button>
         <button
           onClick={() => onZoomChange(Math.min(zoom + 0.1, 2))}
-          className="w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 border-2 shadow-lg"
+          className="w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 border-2 shadow-lg hover:scale-110"
           style={{ 
             background: canvasColors.controlBg,
             borderColor: canvasColors.controlBorder,
@@ -620,7 +635,7 @@ export default function WorkflowCanvas({
         </button>
         <button
           onClick={() => onZoomChange(Math.max(zoom - 0.1, 0.5))}
-          className="w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 border-2 shadow-lg"
+          className="w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 border-2 shadow-lg hover:scale-110"
           style={{ 
             background: canvasColors.controlBg,
             borderColor: canvasColors.controlBorder,
@@ -634,7 +649,7 @@ export default function WorkflowCanvas({
             onPanChange({ x: 0, y: 0 });
             onZoomChange(1);
           }}
-          className="w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 border-2 shadow-lg"
+          className="w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 border-2 shadow-lg hover:scale-110"
           style={{ 
             background: canvasColors.controlBg,
             borderColor: canvasColors.controlBorder,
@@ -645,28 +660,42 @@ export default function WorkflowCanvas({
         </button>
       </div>
 
-      {/* Instructions */}
-      <div 
-        className="absolute top-4 left-4 rounded-xl p-4 text-xs z-10 border-2"
-        style={{
-          background: canvasColors.instructionsBg,
-          borderColor: canvasColors.instructionsBorder,
-          backdropFilter: 'blur(15px)',
-          maxWidth: '260px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.15)'
-        }}
-      >
-        <p className={`font-black mb-2 text-sm`} style={{ color: canvasColors.instructionsText }}>
-          💡 Quick Guide
-        </p>
-        <ul className={`space-y-1 text-xs`} style={{ color: canvasColors.instructionsText, opacity: 0.85 }}>
-          <li>• Drag employees/groups to canvas</li>
-          <li>• Click blue dot to connect nodes</li>
-          <li>• Move cursor to edge to auto-pan</li>
-          <li>• Click <Maximize2 className="w-3 h-3 inline" /> to see all nodes</li>
-          <li>• Click 🗑️ to delete connection</li>
-        </ul>
-      </div>
+      {/* Quick Guide - IMPROVED WITH FADE ON HOVER AND CLOSE BUTTON */}
+      {showQuickGuide && (
+        <div 
+          className="absolute top-4 left-4 rounded-xl p-4 text-xs z-10 border-2 transition-opacity duration-300"
+          style={{
+            background: canvasColors.instructionsBg,
+            borderColor: canvasColors.instructionsBorder,
+            backdropFilter: 'blur(15px)',
+            maxWidth: '260px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+            opacity: isGuideHovered ? 0.3 : 1
+          }}
+          onMouseEnter={() => setIsGuideHovered(true)}
+          onMouseLeave={() => setIsGuideHovered(false)}
+        >
+          <div className="flex items-start justify-between mb-2">
+            <p className={`font-black text-sm`} style={{ color: canvasColors.instructionsText }}>
+              💡 Quick Guide
+            </p>
+            <button
+              onClick={() => setShowQuickGuide(false)}
+              className="p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+              title="Close guide"
+            >
+              <X className="w-3.5 h-3.5" style={{ color: canvasColors.instructionsText }} />
+            </button>
+          </div>
+          <ul className={`space-y-1 text-xs`} style={{ color: canvasColors.instructionsText, opacity: 0.85 }}>
+            <li>• Drag employees/groups to canvas</li>
+            <li>• Click blue dot to connect nodes</li>
+            <li>• Move cursor to edge to auto-pan</li>
+            <li>• Click <Maximize2 className="w-3 h-3 inline" /> to see all nodes</li>
+            <li>• Click 🗑️ to delete connection</li>
+          </ul>
+        </div>
+      )}
 
       {connecting && (
         <div 

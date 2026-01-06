@@ -3,43 +3,39 @@
 
 import React from 'react';
 import { useTheme } from '@/app/context/ThemeContext';
-import { Calendar, Clock, User, CheckCircle, XCircle, AlertCircle, RefreshCw, MessageSquare } from 'lucide-react';
+import { Calendar, Clock, User, Users, CheckCircle, XCircle, AlertCircle, MessageSquare } from 'lucide-react';
+
+interface Participant {
+  userId: string;
+  username: string;
+  name: string;
+  status: 'pending' | 'accepted' | 'declined' | 'counter-proposed';
+  responseDate?: Date;
+  declineReason?: string;
+}
 
 interface Appointment {
   _id: string;
-  requesterUsername: string;
-  requestedUsername: string;
+  creatorUsername: string;
+  creatorName: string;
+  type: 'individual' | 'group';
+  participants: Participant[];
   title: string;
   description?: string;
   proposedDate: Date;
   proposedStartTime: string;
   proposedEndTime: string;
-  status: 'pending' | 'accepted' | 'declined' | 'counter-proposed';
-  currentOwner: string;
-  counterProposal?: {
-    date: Date;
-    startTime: string;
-    endTime: string;
-    reason: string;
-  };
-  declineReason?: string;
-  history: Array<{
-    action: string;
-    by: string;
-    timestamp: Date;
-    details?: any;
-  }>;
+  status: 'pending' | 'accepted' | 'declined' | 'partially-accepted' | 'cancelled';
   createdAt: Date;
 }
 
 interface AppointmentCardProps {
   appointment: Appointment;
   currentUsername: string;
-  view: 'sent' | 'received';
   onViewDetails: (appointment: Appointment) => void;
 }
 
-export default function AppointmentCard({ appointment, currentUsername, view, onViewDetails }: AppointmentCardProps) {
+export default function AppointmentCard({ appointment, currentUsername, onViewDetails }: AppointmentCardProps) {
   const { colors, cardCharacters } = useTheme();
 
   const getStatusConfig = (status: string) => {
@@ -48,7 +44,7 @@ export default function AppointmentCard({ appointment, currentUsername, view, on
         return {
           character: cardCharacters.interactive,
           icon: <AlertCircle className="h-3.5 w-3.5" />,
-          label: 'Pending Response'
+          label: 'Pending'
         };
       case 'accepted':
         return {
@@ -62,11 +58,11 @@ export default function AppointmentCard({ appointment, currentUsername, view, on
           icon: <XCircle className="h-3.5 w-3.5" />,
           label: 'Declined'
         };
-      case 'counter-proposed':
+      case 'partially-accepted':
         return {
           character: cardCharacters.informative,
-          icon: <RefreshCw className="h-3.5 w-3.5" />,
-          label: 'Counter-Proposed'
+          icon: <AlertCircle className="h-3.5 w-3.5" />,
+          label: 'Partial'
         };
       default:
         return {
@@ -78,18 +74,14 @@ export default function AppointmentCard({ appointment, currentUsername, view, on
   };
 
   const statusConfig = getStatusConfig(appointment.status);
-  const cardChar = cardCharacters.neutral; // Base card uses neutral character
+  const cardChar = cardCharacters.neutral;
   
-  // Check if this appointment was counter-proposed
-  const wasCounterProposed = appointment.history.some(h => 
-    h.action === 'counter-proposed' && h.details?.swappedRoles
-  );
+  const isCreator = appointment.creatorUsername === currentUsername;
+  const userParticipant = appointment.participants.find(p => p.username === currentUsername);
+  const needsResponse = userParticipant && userParticipant.status === 'pending';
   
-  const otherUser = view === 'sent' 
-    ? appointment.requestedUsername 
-    : appointment.requesterUsername;
-  
-  const isWaitingForMe = appointment.currentOwner === currentUsername;
+  const acceptedCount = appointment.participants.filter(p => p.status === 'accepted').length;
+  const totalCount = appointment.participants.length;
   
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString('en-US', {
@@ -113,10 +105,8 @@ export default function AppointmentCard({ appointment, currentUsername, view, on
       onClick={() => onViewDetails(appointment)}
       className={`group relative w-full text-left overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${cardChar.bg} ${cardChar.border} ${colors.shadowCard} hover:${colors.shadowHover} transition-all duration-300 hover:scale-[1.02]`}
     >
-      {/* Paper Texture */}
       <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
       
-      {/* Internal Glow on Hover */}
       <div 
         className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
         style={{ boxShadow: `inset 0 0 20px ${colors.glowPrimary}` }}
@@ -131,12 +121,13 @@ export default function AppointmentCard({ appointment, currentUsername, view, on
             </h3>
             <div className="flex items-center space-x-2">
               <div className="flex items-center space-x-1">
-                <User className={`h-3 w-3 ${colors.textMuted}`} />
+                {appointment.type === 'group' ? (
+                  <Users className={`h-3 w-3 ${colors.textMuted}`} />
+                ) : (
+                  <User className={`h-3 w-3 ${colors.textMuted}`} />
+                )}
                 <span className={`text-xs ${colors.textMuted}`}>
-                  {view === 'sent' ? 'To:' : 'From:'}
-                </span>
-                <span className={`text-xs font-bold ${cardChar.accent}`}>
-                  @{otherUser}
+                  {isCreator ? 'Created by you' : `From: ${appointment.creatorName}`}
                 </span>
               </div>
             </div>
@@ -153,12 +144,12 @@ export default function AppointmentCard({ appointment, currentUsername, view, on
           </div>
         </div>
 
-        {/* Counter-Proposal Notice */}
-        {wasCounterProposed && (
-          <div className={`flex items-center space-x-2 p-2 rounded-lg border backdrop-blur-sm bg-gradient-to-br ${cardCharacters.informative.bg} ${cardCharacters.informative.border}`}>
-            <RefreshCw className={`h-3 w-3 ${cardCharacters.informative.iconColor}`} />
-            <span className={`text-[10px] font-bold ${cardCharacters.informative.text}`}>
-              REVISED REQUEST
+        {/* Group Info */}
+        {appointment.type === 'group' && (
+          <div className={`flex items-center space-x-2 p-2 rounded-lg border backdrop-blur-sm ${cardCharacters.informative.bg} ${cardCharacters.informative.border}`}>
+            <Users className={`h-3.5 w-3.5 ${cardCharacters.informative.iconColor}`} />
+            <span className={`text-xs font-bold ${cardCharacters.informative.text}`}>
+              Group ({acceptedCount}/{totalCount} accepted)
             </span>
           </div>
         )}
@@ -177,32 +168,6 @@ export default function AppointmentCard({ appointment, currentUsername, view, on
           </div>
         </div>
 
-        {/* Counter Proposal Reason */}
-        {appointment.counterProposal?.reason && (
-          <div className={`p-2 rounded-lg border backdrop-blur-sm bg-gradient-to-br ${cardCharacters.informative.bg} ${cardCharacters.informative.border}`}>
-            <div className="flex items-center space-x-2 mb-1">
-              <MessageSquare className={`h-3 w-3 ${cardCharacters.informative.iconColor}`} />
-              <span className={`text-[10px] font-bold ${cardCharacters.informative.text}`}>Reason for Changes</span>
-            </div>
-            <p className={`text-xs ${colors.textMuted} line-clamp-2`}>
-              {appointment.counterProposal.reason}
-            </p>
-          </div>
-        )}
-
-        {/* Decline Reason */}
-        {appointment.status === 'declined' && appointment.declineReason && (
-          <div className={`p-2 rounded-lg border backdrop-blur-sm bg-gradient-to-br ${cardCharacters.urgent.bg} ${cardCharacters.urgent.border}`}>
-            <div className="flex items-center space-x-2 mb-1">
-              <XCircle className={`h-3 w-3 ${cardCharacters.urgent.iconColor}`} />
-              <span className={`text-[10px] font-bold ${cardCharacters.urgent.text}`}>Declined</span>
-            </div>
-            <p className={`text-xs ${colors.textMuted} line-clamp-2`}>
-              {appointment.declineReason}
-            </p>
-          </div>
-        )}
-
         {/* Description Preview */}
         {appointment.description && (
           <p className={`text-xs ${colors.textMuted} line-clamp-2`}>
@@ -211,16 +176,17 @@ export default function AppointmentCard({ appointment, currentUsername, view, on
         )}
 
         {/* Action Needed Badge */}
-        {isWaitingForMe && appointment.status === 'pending' && (
+        {needsResponse && (
           <div className={`flex items-center justify-between pt-3 border-t ${colors.border}`}>
             <div className="flex items-center space-x-2">
-              <div className={`w-2 h-2 rounded-full animate-pulse`} style={{ backgroundColor: cardCharacters.urgent.iconColor.replace('text-', '') }}></div>
+              <div className={`w-2 h-2 rounded-full animate-pulse`} 
+                   style={{ backgroundColor: cardCharacters.urgent.iconColor.replace('text-', '') }}></div>
               <span className={`text-xs font-bold ${cardCharacters.urgent.text}`}>
                 Response Required
               </span>
             </div>
             <span className={`text-[10px] ${colors.textMuted}`}>
-              Click to view
+              Click to respond
             </span>
           </div>
         )}
@@ -228,8 +194,8 @@ export default function AppointmentCard({ appointment, currentUsername, view, on
         {/* Footer Info */}
         <div className={`flex items-center justify-between text-[10px] ${colors.textMuted} pt-2 border-t ${colors.borderSubtle}`}>
           <span>Created {new Date(appointment.createdAt).toLocaleDateString()}</span>
-          {appointment.history.length > 1 && (
-            <span>{appointment.history.length} updates</span>
+          {appointment.type === 'group' && (
+            <span>{totalCount} participants</span>
           )}
         </div>
       </div>

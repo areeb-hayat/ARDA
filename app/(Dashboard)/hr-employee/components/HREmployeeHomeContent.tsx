@@ -11,7 +11,7 @@ import MyTicketsDonut from './HomeContent/MyTicketsDonut';
 import MyProjectsSprintsWidget from './HomeContent/MyProjectsSprintsWidget';
 import TodaysEventsWidget from './HomeContent/TodaysEventsWidget';
 import UpcomingEventsWidget from './HomeContent/UpcomingEventsWidget';
-import {LoadingState} from './HomeContent/LoadingState';
+import LoadingState from './HomeContent/LoadingState';
 import Styles from './HomeContent/Styles';
 import { useTheme } from '@/app/context/ThemeContext';
 

@@ -1,6 +1,7 @@
 // ===== app/api/tasks/route.js =====
 import dbConnect from '@/lib/mongoose';
 import Task from '@/models/Task';
+import Project from '@/models/Project';
 import { NextResponse } from 'next/server';
 import { createCalendarEventsWithTracking } from '@/app/utils/calendarSync';
 

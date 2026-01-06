@@ -1,243 +1,283 @@
-// app/utils/calendarSync.ts
+// ===== app/utils/calendarSync.ts =====
 
-import CalendarEvent from '@/models/CalendarEvent';
-
-interface Assignee {
-  employeeId: string;
-  name: string;
-  email: string;
-}
-
-interface CalendarSyncOptions {
+interface SyncEventData {
+  userId: string;
+  userName: string;
+  type: 'meeting' | 'appointment' | 'task-block' | 'deadline' | 'reminder';
   title: string;
-  description: string;
-  type: 'sprint' | 'project' | 'task';
-  startDate?: Date;
-  dueDate?: Date;
-  assignees: Assignee[];
-  createdBy?: {
-    employeeId: string;
-    name: string;
-    email: string;
-  };
-  customColor?: string; // Allow custom color to be passed
+  description?: string;
+  startTime?: Date;
+  endTime?: Date;
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
+  linkedAppointmentId?: string;
+  linkedProjectId?: string;
+  linkedTaskId?: string;
+  autoCompleteOnExpiry?: boolean;
+  color?: string;
 }
 
 /**
- * Creates calendar events for all assignees of a sprint/project/task
+ * Syncs system-generated events to user calendar
+ * These events cannot be deleted by users
  */
-export async function createCalendarEventsForAssignees(options: CalendarSyncOptions) {
-  const { title, description, type, startDate, dueDate, assignees, createdBy, customColor } = options;
-  
-  // Determine the appropriate calendar event type
-  const calendarType = type === 'task' ? 'task' : 'deadline';
-  
-  // Use custom color if provided, otherwise use default color based on type
-  const defaultColorMap = {
-    sprint: '#FF6B6B',    // Red for sprints
-    project: '#4ECDC4',   // Teal for projects
-    task: '#95E1D3'       // Light teal for tasks
-  };
-  const color = customColor || defaultColorMap[type];
-  
-  console.log(`🎨 Calendar color for ${type} "${title}":`, {
-    customColor,
-    finalColor: color,
-    hasCustomColor: !!customColor
-  });
-  
-  // Include creator in the list of people to get calendar events
-  const allUsers = [...assignees];
-  if (createdBy && !assignees.find(a => a.employeeId === createdBy.employeeId)) {
-    allUsers.push(createdBy);
-  }
-  
-  // Create calendar events for each assignee
-  const calendarEvents = [];
-  
-  for (const assignee of allUsers) {
-    try {
-      // Handle single day event (start and due date are the same)
-      if (dueDate && startDate && isSameDay(new Date(startDate), new Date(dueDate))) {
-        const event = await CalendarEvent.create({
-          userId: assignee.employeeId,
-          username: assignee.name,
-          title: `${title} - Due Today`,
-          description: description || `${type.charAt(0).toUpperCase() + type.slice(1)}: ${title}`,
-          type: calendarType,
-          startDate: new Date(dueDate),
-          endDate: null,
-          startTime: null,
-          endTime: null,
-          color,
-          isAllDay: true,
-          completed: false,
-          reminder: {
-            enabled: true,
-            minutesBefore: 60 // 1 hour before
-          }
-        });
-        calendarEvents.push(event);
-      } 
-      // Handle date range or single due date
-      else if (dueDate) {
-        // If there's a start date and it's different from due date, create two events
-        if (startDate && !isSameDay(new Date(startDate), new Date(dueDate))) {
-          // Start event
-          const startEvent = await CalendarEvent.create({
-            userId: assignee.employeeId,
-            username: assignee.name,
-            title: `${title} - Start`,
-            description: description || `${type.charAt(0).toUpperCase() + type.slice(1)} starts: ${title}`,
-            type: 'reminder',
-            startDate: new Date(startDate),
-            endDate: null,
-            startTime: null,
-            endTime: null,
-            color,
-            isAllDay: true,
-            completed: false,
-            reminder: {
-              enabled: true,
-              minutesBefore: 60
-            }
-          });
-          calendarEvents.push(startEvent);
-        }
-        
-        // Due date event
-        const dueEvent = await CalendarEvent.create({
-          userId: assignee.employeeId,
-          username: assignee.name,
-          title: `${title} - Due`,
-          description: description || `${type.charAt(0).toUpperCase() + type.slice(1)} due: ${title}`,
-          type: calendarType,
-          startDate: new Date(dueDate),
-          endDate: null,
-          startTime: null,
-          endTime: null,
-          color,
-          isAllDay: true,
-          completed: false,
-          reminder: {
-            enabled: true,
-            minutesBefore: 60
-          }
-        });
-        calendarEvents.push(dueEvent);
-      }
-      // Only start date provided
-      else if (startDate) {
-        const event = await CalendarEvent.create({
-          userId: assignee.employeeId,
-          username: assignee.name,
-          title: `${title} - Start`,
-          description: description || `${type.charAt(0).toUpperCase() + type.slice(1)}: ${title}`,
-          type: 'reminder',
-          startDate: new Date(startDate),
-          endDate: null,
-          startTime: null,
-          endTime: null,
-          color,
-          isAllDay: true,
-          completed: false,
-          reminder: {
-            enabled: true,
-            minutesBefore: 60
-          }
-        });
-        calendarEvents.push(event);
-      }
-    } catch (error) {
-      console.error(`Error creating calendar event for ${assignee.name}:`, error);
-      // Continue with other assignees even if one fails
-    }
-  }
-  
-  return calendarEvents;
-}
-
-/**
- * Updates calendar events when a sprint/project/task is updated
- */
-export async function updateCalendarEventsForItem(
-  itemId: string,
-  itemType: 'sprint' | 'project' | 'task',
-  options: CalendarSyncOptions
-) {
-  console.log(`🔄 Updating calendar events for ${itemType} ${itemId}`);
-  
-  // Delete old calendar events related to this item
-  await deleteCalendarEventsForItem(itemId, itemType);
-  
-  // Create new calendar events with updated data (WITH TRACKING)
-  return await createCalendarEventsWithTracking(itemId, options);
-}
-
-/**
- * Deletes calendar events associated with a sprint/project/task
- */
-export async function deleteCalendarEventsForItem(
-  itemId: string,
-  itemType: 'sprint' | 'project' | 'task'
-) {
+export async function syncSystemEvent(eventData: SyncEventData): Promise<{ success: boolean; eventId?: string; error?: string }> {
   try {
-    // We'll store the item reference in the description for tracking
-    // Delete events that have this reference
-    // Escape special regex characters in the pattern
-    const searchPattern = `\\[${itemType}-${itemId}\\]`;
-    
-    console.log(`🗑️  Attempting to delete calendar events for ${itemType} ${itemId}`);
-    console.log(`🔍 Search pattern: ${searchPattern}`);
-    
-    // First, let's see what events exist with this pattern
-    const existingEvents = await CalendarEvent.find({
-      description: { $regex: searchPattern }
+    const response = await fetch('/api/calendar/sync-event', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ...eventData,
+        isSystemGenerated: true,
+      }),
     });
-    
-    console.log(`📋 Found ${existingEvents.length} events to delete`);
-    
-    const result = await CalendarEvent.deleteMany({
-      description: { $regex: searchPattern }
-    });
-    
-    console.log(`✅ Deleted ${result.deletedCount} calendar events`);
-    
-    return result;
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to sync event');
+    }
+
+    return { success: true, eventId: data.eventId };
   } catch (error) {
-    console.error(`Error deleting calendar events for ${itemType} ${itemId}:`, error);
-    return null;
+    console.error('Calendar sync error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
   }
 }
 
 /**
- * Helper function to check if two dates are the same day
+ * Syncs project deadline to calendar
  */
-function isSameDay(date1: Date, date2: Date): boolean {
-  return (
-    date1.getFullYear() === date2.getFullYear() &&
-    date1.getMonth() === date2.getMonth() &&
-    date1.getDate() === date2.getDate()
-  );
+export async function syncProjectDeadline(projectData: {
+  userId: string;
+  userName: string;
+  projectId: string;
+  projectName: string;
+  deadline: Date;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+}): Promise<{ success: boolean; eventId?: string; error?: string }> {
+  return syncSystemEvent({
+    userId: projectData.userId,
+    userName: projectData.userName,
+    type: 'deadline',
+    title: `Project Deadline: ${projectData.projectName}`,
+    description: `Deadline for project: ${projectData.projectName}`,
+    startTime: projectData.deadline,
+    endTime: projectData.deadline,
+    priority: projectData.priority,
+    linkedProjectId: projectData.projectId,
+    color: '#F44336',
+  });
 }
 
 /**
- * Enhanced version that includes item reference for tracking
+ * Syncs appointment to calendar
  */
-export async function createCalendarEventsWithTracking(
-  itemId: string,
-  options: CalendarSyncOptions
-) {
-  const { title, description, type, startDate, dueDate, assignees, createdBy } = options;
-  
-  // Add tracking reference to description
-  const trackingRef = `[${type}-${itemId}]`;
-  const enhancedDescription = description 
-    ? `${description}\n\n${trackingRef}`
-    : `${type.charAt(0).toUpperCase() + type.slice(1)}: ${title}\n\n${trackingRef}`;
-  
-  return await createCalendarEventsForAssignees({
-    ...options,
-    description: enhancedDescription
+export async function syncAppointment(appointmentData: {
+  userId: string;
+  userName: string;
+  appointmentId: string;
+  title: string;
+  description?: string;
+  startTime: Date;
+  endTime: Date;
+  location?: string;
+}): Promise<{ success: boolean; eventId?: string; error?: string }> {
+  return syncSystemEvent({
+    userId: appointmentData.userId,
+    userName: appointmentData.userName,
+    type: 'appointment',
+    title: appointmentData.title,
+    description: appointmentData.description,
+    startTime: appointmentData.startTime,
+    endTime: appointmentData.endTime,
+    linkedAppointmentId: appointmentData.appointmentId,
+    autoCompleteOnExpiry: true,
+    color: '#64B5F6',
   });
+}
+
+/**
+ * Syncs task with time block to calendar
+ */
+export async function syncTaskBlock(taskData: {
+  userId: string;
+  userName: string;
+  taskId: string;
+  taskName: string;
+  startTime: Date;
+  endTime: Date;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+}): Promise<{ success: boolean; eventId?: string; error?: string }> {
+  return syncSystemEvent({
+    userId: taskData.userId,
+    userName: taskData.userName,
+    type: 'task-block',
+    title: `Task: ${taskData.taskName}`,
+    startTime: taskData.startTime,
+    endTime: taskData.endTime,
+    priority: taskData.priority,
+    linkedTaskId: taskData.taskId,
+    color: '#FF9800',
+  });
+}
+
+/**
+ * Updates a system-generated event
+ */
+export async function updateSystemEvent(eventId: string, updates: Partial<SyncEventData>): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetch(`/api/calendar/sync-event`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        eventId,
+        updates,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to update event');
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Calendar update error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
+  }
+}
+
+/**
+ * Deletes a system-generated event
+ */
+export async function deleteSystemEvent(eventId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetch(`/api/calendar/sync-event?eventId=${eventId}`, {
+      method: 'DELETE',
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to delete event');
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Calendar delete error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
+  }
+}
+
+/**
+ * Checks if a time slot is available for a user
+ */
+export async function checkTimeSlotAvailability(
+  userId: string,
+  startTime: Date,
+  endTime: Date
+): Promise<{ available: boolean; conflictingEvents?: any[] }> {
+  try {
+    const response = await fetch(
+      `/api/calendar/check-availability?userId=${userId}&startTime=${startTime.toISOString()}&endTime=${endTime.toISOString()}`
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to check availability');
+    }
+
+    return {
+      available: data.available,
+      conflictingEvents: data.conflictingEvents,
+    };
+  } catch (error) {
+    console.error('Availability check error:', error);
+    return {
+      available: false,
+      conflictingEvents: [],
+    };
+  }
+}
+
+/**
+ * Gets all available time slots for a user on a specific date
+ */
+export async function getAvailableTimeSlots(
+  userId: string,
+  date: Date,
+  slotDuration: number = 30 // in minutes
+): Promise<{ success: boolean; slots?: Array<{ start: Date; end: Date }>; error?: string }> {
+  try {
+    const response = await fetch(
+      `/api/calendar/available-slots?userId=${userId}&date=${date.toISOString()}&duration=${slotDuration}`
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to get available slots');
+    }
+
+    return {
+      success: true,
+      slots: data.slots.map((slot: any) => ({
+        start: new Date(slot.start),
+        end: new Date(slot.end),
+      })),
+    };
+  } catch (error) {
+    console.error('Available slots error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
+  }
+}
+
+/**
+ * Auto-completes expired events
+ */
+export async function autoCompleteExpiredEvents(userId: string): Promise<{ success: boolean; completedCount?: number; error?: string }> {
+  try {
+    const response = await fetch('/api/calendar/auto-complete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to auto-complete events');
+    }
+
+    return {
+      success: true,
+      completedCount: data.completedCount,
+    };
+  } catch (error) {
+    console.error('Auto-complete error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
+  }
 }

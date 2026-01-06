@@ -1,379 +1,425 @@
+// ===== app/components/calendars/PersonalCalendar.tsx =====
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '@/app/context/ThemeContext';
-import { Calendar as CalendarIcon, Plus, Filter, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import CalendarGrid from './CalendarGrid';
 import CalendarSidebar from './CalendarSidebar';
-import CalendarEventModal from './CalendarEventModal';
+import DayDetailPanel from './DayDetailPanel';
+import TodayControlCenter from './TodayControlCenter';
+import EventCreator from './EventCreator';
+import { autoCompleteExpiredEvents } from '@/app/utils/calendarSync';
+import {
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  RefreshCw,
+  Loader2,
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle,
+  Zap
+} from 'lucide-react';
 
-interface CalendarEvent {
+interface TimeIntent {
   _id: string;
-  userId: string;
-  username: string;
+  type: 'meeting' | 'appointment' | 'task-block' | 'deadline' | 'focus-block' | 'recovery-block' | 'reminder';
   title: string;
-  description?: string;
-  type: 'task' | 'deadline' | 'meeting' | 'reminder';
-  startDate: Date;
-  endDate?: Date;
-  startTime?: string;
-  endTime?: string;
+  description: string;
+  startTime?: Date;
+  endTime?: Date;
+  allDay: boolean;
+  isCompleted: boolean;
+  completedAt?: Date;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
   color: string;
-  isAllDay: boolean;
-  completed: boolean;
-  reminder?: {
-    enabled: boolean;
-    minutesBefore: number;
+  isSystemGenerated: boolean;
+  autoCompleteOnExpiry: boolean;
+}
+
+interface DayHealth {
+  _id: string;
+  date: Date;
+  healthStatus: 'light' | 'balanced' | 'heavy' | 'overloaded';
+  metrics: {
+    totalEvents: number;
+    totalHours: number;
+    meetingHours: number;
+    focusHours: number;
+    deadlineCount: number;
+    highPriorityCount: number;
+    recoveryHours: number;
   };
 }
 
 export default function PersonalCalendar() {
-  const { colors, cardCharacters, theme } = useTheme();
-  const charColors = cardCharacters.informative;
-  
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { colors, cardCharacters, showToast } = useTheme();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [filterType, setFilterType] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [events, setEvents] = useState<TimeIntent[]>([]);
+  const [dayHealthData, setDayHealthData] = useState<Map<string, DayHealth>>(new Map());
+  const [loading, setLoading] = useState(true);
+  const [showEventCreator, setShowEventCreator] = useState(false);
+  const [eventCreatorDate, setEventCreatorDate] = useState<Date>(new Date());
+  const [userId, setUserId] = useState('');
+  const [userName, setUserName] = useState('');
 
   useEffect(() => {
-    fetchEvents();
-  }, [currentDate, filterType]);
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      const user = JSON.parse(userData);
+      setUserId(user._id || user.userId || user.id);
+      setUserName(user.name || user.username);
+    }
+  }, []);
 
-  const fetchEvents = async () => {
+  useEffect(() => {
+    if (userId) {
+      fetchCalendarData();
+      autoCompleteExpired();
+    }
+  }, [userId, currentDate]);
+
+  const autoCompleteExpired = async () => {
+    if (!userId) return;
+    try {
+      await autoCompleteExpiredEvents(userId);
+    } catch (error) {
+      console.error('Auto-complete error:', error);
+    }
+  };
+
+  const fetchCalendarData = async () => {
+    if (!userId) return;
+
     try {
       setLoading(true);
-      const userData = localStorage.getItem('user');
-      if (!userData) return;
 
-      const user = JSON.parse(userData);
-      
-      const startDate = getStartDate();
-      const endDate = getEndDate();
+      const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
-      const params = new URLSearchParams({
-        userId: user.username,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-      });
+      const eventsResponse = await fetch(
+        `/api/calendar/events?userId=${userId}&startDate=${startOfMonth.toISOString()}&endDate=${endOfMonth.toISOString()}`
+      );
+      const eventsData = await eventsResponse.json();
 
-      if (filterType !== 'all') {
-        params.append('type', filterType);
-      }
-
-      const response = await fetch(`/api/calendar?${params}`);
-      const data = await response.json();
-
-      if (data.success) {
-        setEvents(data.events.map((e: any) => ({
+      if (eventsResponse.ok) {
+        setEvents(eventsData.events.map((e: any) => ({
           ...e,
-          startDate: new Date(e.startDate),
-          endDate: e.endDate ? new Date(e.endDate) : undefined
+          startTime: e.startTime ? new Date(e.startTime) : undefined,
+          endTime: e.endTime ? new Date(e.endTime) : undefined,
         })));
       }
+
+      const healthResponse = await fetch('/api/calendar/day-health', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          startDate: startOfMonth.toISOString(),
+          endDate: endOfMonth.toISOString(),
+        }),
+      });
+
+      const healthData = await healthResponse.json();
+
+      if (healthResponse.ok) {
+        const healthMap = new Map<string, DayHealth>();
+        healthData.results.forEach((health: any) => {
+          const dateKey = new Date(health.date).toDateString();
+          healthMap.set(dateKey, {
+            ...health,
+            date: new Date(health.date),
+          });
+        });
+        setDayHealthData(healthMap);
+      }
+
+      setLoading(false);
     } catch (error) {
-      console.error('Failed to fetch events:', error);
-    } finally {
+      console.error('Error fetching calendar data:', error);
       setLoading(false);
     }
   };
 
-  const getStartDate = () => {
-    const date = new Date(currentDate);
-    date.setDate(1);
-    return date;
+  const handlePreviousMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
   };
 
-  const getEndDate = () => {
-    const date = new Date(currentDate);
-    date.setMonth(date.getMonth() + 1);
-    date.setDate(0);
-    return date;
-  };
-
-  const handlePrevious = () => {
-    const newDate = new Date(currentDate);
-    newDate.setMonth(newDate.getMonth() - 1);
-    setCurrentDate(newDate);
-  };
-
-  const handleNext = () => {
-    const newDate = new Date(currentDate);
-    newDate.setMonth(newDate.getMonth() + 1);
-    setCurrentDate(newDate);
+  const handleNextMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   };
 
   const handleToday = () => {
     setCurrentDate(new Date());
+    setSelectedDate(new Date());
   };
 
-  const handleCreateEvent = (date?: Date) => {
-    if (date) {
-      setSelectedEvent({
-        _id: '',
-        userId: '',
-        username: '',
-        title: '',
-        type: 'task',
-        startDate: date,
-        color: '#2196F3',
-        isAllDay: false,
-        completed: false
-      });
-    } else {
-      setSelectedEvent(null);
-    }
-    setIsModalOpen(true);
+  const handleDateSelect = (date: Date) => {
+    setSelectedDate(date);
   };
 
-  const handleEventClick = (event: CalendarEvent) => {
-    setSelectedEvent(event);
-    setIsModalOpen(true);
+  const handleEventCreated = () => {
+    setShowEventCreator(false);
+    fetchCalendarData();
   };
 
-  const handleEventSave = async (eventData: any) => {
+  const toggleEventComplete = async (eventId: string, currentStatus: boolean) => {
     try {
-      const userData = localStorage.getItem('user');
-      if (!userData) return;
-
-      const user = JSON.parse(userData);
-
-      if (selectedEvent && selectedEvent._id) {
-        const response = await fetch('/api/calendar', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ _id: selectedEvent._id, ...eventData })
-        });
-
-        if (response.ok) {
-          fetchEvents();
-          setIsModalOpen(false);
-        }
-      } else {
-        const response = await fetch('/api/calendar', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: user.username,
-            username: user.username,
-            ...eventData
-          })
-        });
-
-        if (response.ok) {
-          fetchEvents();
-          setIsModalOpen(false);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to save event:', error);
-    }
-  };
-
-  const handleEventDelete = async (eventId: string) => {
-    try {
-      const response = await fetch(`/api/calendar?id=${eventId}`, {
-        method: 'DELETE'
+      const response = await fetch('/api/calendar/events', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventId,
+          updates: { isCompleted: !currentStatus }
+        })
       });
 
       if (response.ok) {
-        fetchEvents();
-        setIsModalOpen(false);
+        showToast(
+          currentStatus ? 'Event marked as incomplete' : 'Event marked as complete',
+          'success'
+        );
+        fetchCalendarData();
+      } else {
+        showToast('Failed to update event', 'error');
       }
     } catch (error) {
-      console.error('Failed to delete event:', error);
+      showToast('Failed to update event', 'error');
     }
   };
 
-  const getDateRangeText = () => {
-    const options: Intl.DateTimeFormatOptions = { month: 'long', year: 'numeric' };
-    return currentDate.toLocaleDateString('en-US', options);
+  const getHealthCharacter = (status: string) => {
+    switch (status) {
+      case 'light': return cardCharacters.completed;
+      case 'balanced': return cardCharacters.informative;
+      case 'heavy': return cardCharacters.creative;
+      case 'overloaded': return cardCharacters.urgent;
+      default: return cardCharacters.neutral;
+    }
   };
 
-  const filteredEvents = events.filter(event =>
-    event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (event.description && event.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  const getHealthIcon = (status: string) => {
+    switch (status) {
+      case 'light': return <CheckCircle className="w-4 h-4" />;
+      case 'balanced': return <Zap className="w-4 h-4" />;
+      case 'heavy': return <TrendingUp className="w-4 h-4" />;
+      case 'overloaded': return <AlertTriangle className="w-4 h-4" />;
+      default: return <Calendar className="w-4 h-4" />;
+    }
+  };
+
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const currentMonthHealth = Array.from(dayHealthData.values()).reduce(
+    (acc, health) => {
+      acc[health.healthStatus]++;
+      return acc;
+    },
+    { light: 0, balanced: 0, heavy: 0, overloaded: 0 }
   );
 
-  const handleDateClick = (date: Date) => {
-    // Called from CalendarGrid
-  };
+  if (loading && !events.length) {
+    return (
+      <div className="min-h-screen p-4 md:p-6 space-y-4">
+        <div className={`relative overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${cardCharacters.informative.bg} ${cardCharacters.informative.border} ${colors.shadowCard} p-8`}>
+          <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
+          <div className="relative">
+            <h2 className={`text-xl font-black ${cardCharacters.informative.text} mb-2`}>ARDA Time & Day Management</h2>
+            <p className={`text-sm ${colors.textMuted}`}>Loading your calendar...</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center space-y-4">
+            <div className="relative inline-block">
+              <div className={`absolute inset-0 rounded-full blur-2xl opacity-30 animate-pulse`} style={{ backgroundColor: cardCharacters.informative.iconColor.replace('text-', '') }} />
+              <Loader2 className={`relative w-12 h-12 animate-spin ${cardCharacters.informative.iconColor}`} />
+            </div>
+            <p className={`${colors.textSecondary} text-sm font-semibold`}>Preparing your time canvas...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6 p-4 md:p-6 max-w-[1600px] mx-auto">
-      {/* Header */}
-      <div className={`relative overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${charColors.bg} ${charColors.border} ${colors.shadowCard} transition-all duration-300`}>
-        <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
-        
-        <div className="relative p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className={`p-2 rounded-lg bg-gradient-to-r ${charColors.bg}`}>
-                <CalendarIcon className={`h-5 w-5 ${charColors.iconColor}`} />
-              </div>
-              <div>
-                <h1 className={`text-xl font-black ${charColors.text}`}>Personal Calendar</h1>
-                <p className={`text-xs ${colors.textMuted}`}>Organize your schedule with precision</p>
-              </div>
-            </div>
+    <div className="min-h-screen p-4 md:p-6">
+      <div className="flex gap-6">
+        {/* Main Content */}
+        <div className="flex-1 space-y-4 min-w-0">
+          {/* Header */}
+          <div className={`relative overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${cardCharacters.informative.bg} ${cardCharacters.informative.border} ${colors.shadowCard} transition-all duration-300`}>
+            <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
             
-            <button
-              onClick={() => handleCreateEvent()}
-              className={`group relative overflow-hidden px-4 py-2 rounded-lg font-bold text-sm transition-all duration-300 bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText} ${colors.shadowCard} hover:${colors.shadowHover} flex items-center space-x-2`}
-            >
-              <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
-              <div 
-                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                style={{ boxShadow: `inset 0 0 14px ${colors.glowPrimary}, inset 0 0 28px ${colors.glowPrimary}` }}
-              ></div>
-              <Plus className="h-4 w-4 relative z-10 group-hover:rotate-90 transition-transform duration-300" />
-              <span className="relative z-10">New Event</span>
-            </button>
-          </div>
-
-          {/* Controls */}
-          <div className="space-y-3">
-            {/* Navigation */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handlePrevious}
-                  className={`group relative p-2 rounded-lg border transition-all duration-300 overflow-hidden ${colors.inputBg} ${colors.inputBorder}`}
-                >
-                  <div 
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                    style={{ boxShadow: `inset 0 0 14px ${colors.glowPrimary}` }}
-                  ></div>
-                  <ChevronLeft className={`h-4 w-4 relative z-10 ${colors.textSecondary} group-hover:translate-x-[-2px] transition-transform duration-300`} />
-                </button>
-                
-                <button
-                  onClick={handleToday}
-                  className={`group relative px-3 py-2 rounded-lg border transition-all duration-300 overflow-hidden font-semibold text-sm ${colors.inputBg} ${colors.inputBorder} ${colors.textSecondary}`}
-                >
-                  <div 
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                    style={{ boxShadow: `inset 0 0 14px ${colors.glowPrimary}` }}
-                  ></div>
-                  <span className="relative z-10">Today</span>
-                </button>
-                
-                <button
-                  onClick={handleNext}
-                  className={`group relative p-2 rounded-lg border transition-all duration-300 overflow-hidden ${colors.inputBg} ${colors.inputBorder}`}
-                >
-                  <div 
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                    style={{ boxShadow: `inset 0 0 14px ${colors.glowPrimary}` }}
-                  ></div>
-                  <ChevronRight className={`h-4 w-4 relative z-10 ${colors.textSecondary} group-hover:translate-x-[2px] transition-transform duration-300`} />
-                </button>
-                
-                <div className={`px-3 py-1 font-black ${charColors.text} text-lg ml-2`}>
-                  {getDateRangeText()}
+            <div className="relative p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className={`p-2 rounded-lg bg-gradient-to-r ${cardCharacters.informative.bg}`}>
+                    <Calendar className={`h-5 w-5 ${cardCharacters.informative.iconColor}`} />
+                  </div>
+                  <div>
+                    <h1 className={`text-xl font-black ${cardCharacters.informative.text}`}>Time & Day Management</h1>
+                    <p className={`text-xs ${colors.textMuted}`}>
+                      Your daily companion for managing attention, energy, and intent
+                    </p>
+                  </div>
                 </div>
-              </div>
-
-              {/* Month View Badge */}
-              <div className={`px-3 py-1.5 rounded-lg border font-bold text-xs flex items-center gap-2 bg-gradient-to-r ${charColors.bg} ${charColors.border}`}>
-                <CalendarIcon className={`h-3.5 w-3.5 ${charColors.iconColor}`} />
-                Month View
-              </div>
-            </div>
-
-            {/* Search & Filter */}
-            <div className="flex flex-col lg:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-3 w-full lg:w-auto flex-1">
-                {/* Search */}
-                <div className="relative flex-1 w-full lg:max-w-md">
-                  <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 ${colors.textMuted} z-10`} />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search events..."
-                    className={`w-full pl-10 pr-3 py-2 rounded-lg text-sm transition-all ${colors.inputBg} border ${colors.inputBorder} ${colors.inputText} ${colors.inputPlaceholder}`}
-                  />
-                </div>
-
-                {/* Filter */}
-                <div className="relative w-full lg:w-40">
-                  <select
-                    value={filterType}
-                    onChange={(e) => setFilterType(e.target.value)}
-                    className={`w-full px-3 py-2 rounded-lg text-sm transition-all appearance-none cursor-pointer ${colors.inputBg} border ${colors.inputBorder} ${colors.inputText}`}
+                
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={fetchCalendarData}
+                    disabled={loading}
+                    className={`group relative flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-300 overflow-hidden bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText} border border-transparent ${colors.shadowCard} hover:${colors.shadowHover} disabled:opacity-50`}
                   >
-                    <option value="all">All Events</option>
-                    <option value="task">Tasks</option>
-                    <option value="deadline">Deadlines</option>
-                    <option value="meeting">Meetings</option>
-                    <option value="reminder">Reminders</option>
-                  </select>
-                  <Filter className={`absolute right-3 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 ${colors.textMuted} pointer-events-none`} />
+                    <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
+                    <div 
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                      style={{ boxShadow: `inset 0 0 14px ${colors.glowPrimary}, inset 0 0 28px ${colors.glowPrimary}` }}
+                    ></div>
+                    <RefreshCw className={`h-4 w-4 relative z-10 transition-transform duration-300 ${loading ? 'animate-spin' : 'group-hover:rotate-180'}`} />
+                    <span className="text-sm font-bold relative z-10">Refresh</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setEventCreatorDate(new Date());
+                      setShowEventCreator(true);
+                    }}
+                    className={`group relative flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-300 overflow-hidden bg-gradient-to-r ${cardCharacters.creative.bg} ${cardCharacters.creative.text} border ${cardCharacters.creative.border} ${colors.shadowCard} hover:${colors.shadowHover}`}
+                  >
+                    <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
+                    <div 
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                      style={{ boxShadow: `inset 0 0 14px ${colors.glowSecondary}, inset 0 0 28px ${colors.glowSecondary}` }}
+                    ></div>
+                    <Plus className={`h-4 w-4 relative z-10 transition-transform duration-300 group-hover:rotate-90`} />
+                    <span className="text-sm font-bold relative z-10">Create Intent</span>
+                  </button>
                 </div>
               </div>
 
-              {/* Events Count */}
-              <div className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${colors.inputBg} ${colors.inputBorder} flex items-center gap-2 ${colors.textSecondary}`}>
-                <CalendarIcon className="h-3.5 w-3.5" />
-                <span>{filteredEvents.length} {filteredEvents.length === 1 ? 'Event' : 'Events'}</span>
+              {/* Month Navigation & Health Summary */}
+              <div className={`p-3 rounded-lg border ${cardCharacters.informative.border} bg-gradient-to-br ${colors.cardBg} backdrop-blur-sm`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handlePreviousMonth}
+                      className={`group relative p-2 rounded-lg transition-all duration-300 overflow-hidden bg-gradient-to-br ${colors.cardBg} border ${cardCharacters.informative.border} hover:${colors.shadowHover}`}
+                    >
+                      <ChevronLeft className={`h-4 w-4 ${cardCharacters.informative.iconColor} transition-transform duration-300 group-hover:-translate-x-1`} />
+                    </button>
+
+                    <h2 className={`text-lg font-black ${colors.textPrimary} min-w-[180px] text-center`}>
+                      {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+                    </h2>
+
+                    <button
+                      onClick={handleNextMonth}
+                      className={`group relative p-2 rounded-lg transition-all duration-300 overflow-hidden bg-gradient-to-br ${colors.cardBg} border ${cardCharacters.informative.border} hover:${colors.shadowHover}`}
+                    >
+                      <ChevronRight className={`h-4 w-4 ${cardCharacters.informative.iconColor} transition-transform duration-300 group-hover:translate-x-1`} />
+                    </button>
+
+                    <button
+                      onClick={handleToday}
+                      className={`group relative px-3 py-1.5 rounded-lg font-bold text-xs transition-all duration-300 overflow-hidden border ${cardCharacters.informative.border} ${cardCharacters.informative.bg} ${cardCharacters.informative.text} ml-2`}
+                    >
+                      Today
+                    </button>
+                  </div>
+
+                  {/* Month Health Summary */}
+                  <div className="flex items-center gap-2">
+                    {(['light', 'balanced', 'heavy', 'overloaded'] as const).map((status) => {
+                      const char = getHealthCharacter(status);
+                      const count = currentMonthHealth[status];
+                      if (count === 0) return null;
+
+                      return (
+                        <div
+                          key={status}
+                          className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-bold bg-gradient-to-r ${char.bg} ${char.text}`}
+                        >
+                          {getHealthIcon(status)}
+                          <span className="capitalize">{status}</span>
+                          <span className={`${char.accent}`}>({count})</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Calendar View */}
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-        <div className="xl:col-span-3">
+          {/* Today Control Center */}
+          <TodayControlCenter
+            userId={userId}
+            userName={userName}
+            events={events.filter(e => {
+              if (!e.startTime) return false;
+              const eventDate = new Date(e.startTime).toDateString();
+              return eventDate === new Date().toDateString();
+            })}
+            onRefresh={fetchCalendarData}
+          />
+
+          {/* Calendar Grid */}
           <CalendarGrid
             currentDate={currentDate}
-            events={filteredEvents}
-            onEventClick={handleEventClick}
-            onDateClick={handleDateClick}
-            onCreateEvent={handleCreateEvent}
-            loading={loading}
+            events={events}
+            dayHealthData={dayHealthData}
+            selectedDate={selectedDate}
+            onDateSelect={handleDateSelect}
           />
         </div>
-        
-        <div className="xl:col-span-1">
+
+        {/* Sidebar */}
+        <div className="w-80 flex-shrink-0">
           <CalendarSidebar
             currentDate={currentDate}
-            events={filteredEvents}
-            onEventClick={handleEventClick}
-            onDateChange={setCurrentDate}
+            events={events}
+            onDateSelect={handleDateSelect}
+            onToggleComplete={toggleEventComplete}
           />
         </div>
       </div>
 
-      {/* Event Modal */}
-      {isModalOpen && (
-        <CalendarEventModal
-          event={selectedEvent}
-          onClose={() => setIsModalOpen(false)}
-          onSave={handleEventSave}
-          onDelete={handleEventDelete}
+      {/* Day Detail Panel */}
+      {selectedDate && (
+        <DayDetailPanel
+          date={selectedDate}
+          userId={userId}
+          userName={userName}
+          events={events.filter(e => {
+            if (!e.startTime) return false;
+            const eventDate = new Date(e.startTime).toDateString();
+            return eventDate === selectedDate.toDateString();
+          })}
+          dayHealth={dayHealthData.get(selectedDate.toDateString())}
+          onClose={() => setSelectedDate(null)}
+          onUpdate={fetchCalendarData}
+          onCreateIntent={(date) => {
+            setEventCreatorDate(date);
+            setSelectedDate(null);
+            setShowEventCreator(true);
+          }}
         />
       )}
 
-      {/* Loading Overlay */}
-      {loading && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className={`relative overflow-hidden rounded-2xl p-8 bg-gradient-to-br ${colors.cardBg} border ${colors.border} shadow-2xl`}>
-            <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
-            
-            <div className="relative flex flex-col items-center gap-6">
-              <div className="relative">
-                <div className={`w-16 h-16 border-4 rounded-full ${colors.inputBorder}`}></div>
-                <div className={`absolute inset-0 w-16 h-16 border-4 border-t-transparent rounded-full animate-spin`} style={{ borderColor: charColors.iconColor.replace('text-', ''), borderTopColor: 'transparent' }}></div>
-              </div>
-              <p className={`${colors.textSecondary} font-bold text-lg`}>Loading calendar...</p>
-            </div>
-          </div>
-        </div>
+      {/* Event Creator Modal */}
+      {showEventCreator && (
+        <EventCreator
+          userId={userId}
+          userName={userName}
+          initialDate={eventCreatorDate}
+          onClose={() => setShowEventCreator(false)}
+          onEventCreated={handleEventCreated}
+        />
       )}
     </div>
   );

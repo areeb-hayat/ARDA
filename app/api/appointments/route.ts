@@ -1,7 +1,9 @@
 // ===== app/api/appointments/route.ts =====
 import Appointment from '@/models/Appointment';
+import FormData from '@/models/FormData';
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongoose';
+import { sendAppointmentInvitation } from '@/app/utils/appointmentNotifications';
 
 // GET - Fetch appointments
 export async function GET(request: NextRequest) {
@@ -10,8 +12,8 @@ export async function GET(request: NextRequest) {
     
     const { searchParams } = new URL(request.url);
     const username = searchParams.get('username');
-    const view = searchParams.get('view'); // 'sent', 'received', 'all'
-    const status = searchParams.get('status'); // optional filter
+    const view = searchParams.get('view'); // 'created', 'invited', 'all'
+    const status = searchParams.get('status');
     
     if (!username) {
       return NextResponse.json({ error: 'username is required' }, { status: 400 });
@@ -19,38 +21,32 @@ export async function GET(request: NextRequest) {
     
     let query: any = {};
     
-    // Add status filter if provided
     if (status && status !== 'all') {
       query.status = status;
     }
     
     let appointments;
     
-    if (view === 'sent') {
-      // Uses compound index: { requesterUsername: 1, status: 1, proposedDate: 1 }
-      // or { requesterUsername: 1, createdAt: -1 }
+    if (view === 'created') {
       appointments = await Appointment.find({
-        requesterUsername: username,
+        creatorUsername: username,
         ...query
       })
       .sort({ createdAt: -1 })
       .lean();
-    } else if (view === 'received') {
-      // Uses compound index: { requestedUsername: 1, status: 1, proposedDate: 1 }
-      // or { requestedUsername: 1, createdAt: -1 }
+    } else if (view === 'invited') {
       appointments = await Appointment.find({
-        requestedUsername: username,
+        'participants.username': username,
+        creatorUsername: { $ne: username },
         ...query
       })
       .sort({ createdAt: -1 })
       .lean();
     } else {
-      // For 'all' view, we need both sent and received
-      // This uses both indexes: requesterUsername and requestedUsername
       appointments = await Appointment.find({
         $or: [
-          { requesterUsername: username, ...query },
-          { requestedUsername: username, ...query }
+          { creatorUsername: username, ...query },
+          { 'participants.username': username, ...query }
         ]
       })
       .sort({ createdAt: -1 })
@@ -70,32 +66,76 @@ export async function POST(request: NextRequest) {
     await dbConnect();
     
     const body = await request.json();
-    const { requesterId, requesterUsername, requestedId, requestedUsername, title, description, proposedDate, proposedStartTime, proposedEndTime } = body;
+    const { 
+      creatorId, 
+      creatorUsername, 
+      creatorName,
+      type,
+      participantUsernames,
+      title, 
+      description, 
+      proposedDate, 
+      proposedStartTime, 
+      proposedEndTime 
+    } = body;
     
-    // Validation
-    if (!requesterId || !requesterUsername || !requestedId || !requestedUsername || !title || !proposedDate || !proposedStartTime || !proposedEndTime) {
+    if (!creatorId || !creatorUsername || !creatorName || !type || 
+        !participantUsernames || !Array.isArray(participantUsernames) || 
+        participantUsernames.length === 0 || !title || !proposedDate || 
+        !proposedStartTime || !proposedEndTime) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
+
+    // Fetch participant details using name from basicDetails
+    const users = await FormData.find({
+      username: { $in: participantUsernames }
+    }).select('username basicDetails.name').lean();
+
+    if (users.length !== participantUsernames.length) {
+      return NextResponse.json({ 
+        error: 'Some participants not found' 
+      }, { status: 400 });
+    }
+
+    const participants = users.map(user => ({
+      userId: user.username,
+      username: user.username,
+      name: user.basicDetails?.name || user.username,
+      status: 'pending'
+    }));
     
     const appointment = await Appointment.create({
-      requesterId,
-      requesterUsername,
-      requestedId,
-      requestedUsername,
+      creatorId,
+      creatorUsername,
+      creatorName,
+      type,
+      participants,
       title,
       description,
       proposedDate: new Date(proposedDate),
       proposedStartTime,
       proposedEndTime,
       status: 'pending',
-      currentOwner: requestedUsername,
       history: [{
         action: 'created',
-        by: requesterUsername,
+        by: creatorUsername,
+        byName: creatorName,
         timestamp: new Date(),
-        details: { proposedDate, proposedStartTime, proposedEndTime }
+        details: { 
+          proposedDate, 
+          proposedStartTime, 
+          proposedEndTime,
+          participantCount: participants.length
+        }
       }]
     });
+
+    // Send invitation emails to all participants in background
+    Promise.all(
+      participantUsernames.map(username => 
+        sendAppointmentInvitation(appointment.toObject(), username)
+      )
+    ).catch(err => console.error('Email notification error:', err));
     
     return NextResponse.json({ appointment, success: true }, { status: 201 });
   } catch (error: any) {

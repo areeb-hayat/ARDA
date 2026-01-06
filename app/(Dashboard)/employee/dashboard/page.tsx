@@ -12,7 +12,7 @@ import AppointmentView from '../components/AppointmentView';
 import PoliciesContent from '@/app/components/universal/PoliciesContent';
 import OrgInfoContent from '@/app/components/universal/OrgInfoContent';
 import SettingsContent from '@/app/components/universal/SettingsContent';
-import EmployeeProjectView from '@/app/components/employee-project/EmployeeProjectView';
+import EmployeeProjectsDashboard from '@/app/components/ProjectManagement/employee/EmployeeProjectsDashboard';
 import TicketingContent from '@/app/components/ticketing/TicketingContent';
 import AssignedTicketsContent from '@/app/components/ticketing/AssignedTicketsContent';
 import AnnouncementsPage from '@/app/components/DeptHeadAnnouncements/AnnouncementsPage';
@@ -75,7 +75,12 @@ export default function EmployeeDashboard() {
         return <AssignedTicketsContent />;
       
       case 'projects':
-        return <EmployeeProjectView />;
+        return (
+          <EmployeeProjectsDashboard 
+            userId={user.username}
+            userName={user.displayName}
+          />
+        );
       
       case 'calendar':
         return <CalendarView />;
@@ -155,3 +160,9 @@ export default function EmployeeDashboard() {
     </div>
   );
 }
+
+
+
+
+// import EmployeeProjectView from '@/app/components/employee-project/EmployeeProjectView';
+// return <EmployeeProjectView />;

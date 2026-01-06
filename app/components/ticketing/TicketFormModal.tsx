@@ -1,10 +1,10 @@
 // ============================================
 // app/components/ticketing/TicketFormModal.tsx
 // Modal for creating tickets with dynamic form
-// UPDATED WITH THEME CONTEXT
+// UPDATED WITH THEME CONTEXT MODAL STYLES
 // ============================================
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Send, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { useTheme } from '@/app/context/ThemeContext';
 import DynamicFormField from './DynamicFormField';
@@ -27,7 +27,7 @@ interface Props {
 }
 
 export default function TicketFormModal({ functionality, onClose, onSuccess }: Props) {
-  const { colors, cardCharacters } = useTheme();
+  const { colors, cardCharacters, getModalStyles } = useTheme();
   const charColors = cardCharacters.informative;
   
   const [formData, setFormData] = useState<Record<string, any>>({});
@@ -38,7 +38,17 @@ export default function TicketFormModal({ functionality, onClose, onSuccess }: P
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleFieldChange = (fieldId: string, value: any) => {
+    console.log(`🔄 Field "${fieldId}" changed:`, {
+      type: typeof value,
+      isArray: Array.isArray(value),
+      length: Array.isArray(value) ? value.length : 'N/A',
+      value: fieldId.includes('attachment') ? 
+        (Array.isArray(value) ? `Array with ${value.length} items` : value) : 
+        value
+    });
+    
     setFormData(prev => ({ ...prev, [fieldId]: value }));
+    
     if (errors[fieldId]) {
       setErrors(prev => {
         const newErrors = { ...prev };
@@ -47,6 +57,17 @@ export default function TicketFormModal({ functionality, onClose, onSuccess }: P
       });
     }
   };
+
+  // Debug formData changes
+  useEffect(() => {
+    if (formData['default-attachments']) {
+      console.log('📎 FORMDATA STATE UPDATED - Attachments:', {
+        type: typeof formData['default-attachments'],
+        isArray: Array.isArray(formData['default-attachments']),
+        data: formData['default-attachments']
+      });
+    }
+  }, [formData]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -96,14 +117,54 @@ export default function TicketFormModal({ functionality, onClose, onSuccess }: P
         email: user.email || user.basicDetails?.email || user.username + '@company.com'
       };
 
+      // Prepare form data
+      const preparedFormData = { ...formData };
+      
+      // ====== COMPREHENSIVE DEBUG LOGGING ======
+      console.log('🔍 ====== FORM SUBMISSION DEBUG ======');
+      console.log('📋 All form fields:', Object.keys(preparedFormData));
+      console.log('📋 Full formData:', preparedFormData);
+      
+      if (preparedFormData['default-attachments']) {
+        console.log('📎 Attachments field exists!');
+        console.log('📎 Type:', typeof preparedFormData['default-attachments']);
+        console.log('📎 Is Array?:', Array.isArray(preparedFormData['default-attachments']));
+        console.log('📎 Value:', preparedFormData['default-attachments']);
+        
+        if (Array.isArray(preparedFormData['default-attachments'])) {
+          console.log('📎 Array length:', preparedFormData['default-attachments'].length);
+          preparedFormData['default-attachments'].forEach((item: any, index: number) => {
+            console.log(`📎 Item ${index}:`, {
+              type: typeof item,
+              hasName: item?.name !== undefined,
+              hasData: item?.data !== undefined,
+              hasContent: item?.content !== undefined,
+              value: item
+            });
+          });
+        }
+      } else {
+        console.log('⚠️ No attachments field in formData!');
+      }
+      console.log('🔍 ====== END DEBUG ======');
+      // ========================================
+
+      const requestBody = {
+        functionalityId: functionality._id,
+        formData: preparedFormData,
+        raisedBy: raisedByData
+      };
+
+      console.log('🚀 Sending request with body:', {
+        functionalityId: requestBody.functionalityId,
+        formDataKeys: Object.keys(requestBody.formData),
+        attachments: requestBody.formData['default-attachments']
+      });
+
       const response = await fetch('/api/tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          functionalityId: functionality._id,
-          formData,
-          raisedBy: raisedByData
-        })
+        body: JSON.stringify(requestBody)
       });
 
       let responseData;
@@ -125,6 +186,7 @@ export default function TicketFormModal({ functionality, onClose, onSuccess }: P
         onSuccess(responseData.ticket.ticketNumber);
       }, 2500);
     } catch (error) {
+      console.error('❌ Submission error:', error);
       setErrorMessage(error instanceof Error ? error.message : 'Failed to create ticket. Please try again.');
     } finally {
       setSubmitting(false);
@@ -134,11 +196,18 @@ export default function TicketFormModal({ functionality, onClose, onSuccess }: P
   // Success screen
   if (submitted) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-        <div 
-          className={`relative overflow-hidden w-full max-w-md rounded-2xl p-10 text-center shadow-2xl border-2 animate-in zoom-in duration-500 bg-gradient-to-br ${cardCharacters.completed.bg} ${cardCharacters.completed.border}`}
+      <div className={getModalStyles()}>
+        <div className="absolute inset-0 modal-backdrop" onClick={onClose} aria-hidden="true" />
+        
+        <div className={`
+          relative rounded-2xl border ${colors.modalBorder}
+          ${colors.modalBg} ${colors.modalShadow}
+          w-full max-w-md
+          modal-content p-10 text-center
+        `}
+          style={{ overflow: 'hidden' }}
         >
-          <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
+          <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03] pointer-events-none`}></div>
           
           <div className="relative mb-6 flex justify-center">
             <div className="relative">
@@ -184,57 +253,64 @@ export default function TicketFormModal({ functionality, onClose, onSuccess }: P
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+    <div className={getModalStyles()}>
+      <div className="absolute inset-0 modal-backdrop" onClick={onClose} aria-hidden="true" />
+      
       <div 
-        className={`w-full max-w-3xl max-h-[90vh] rounded-2xl overflow-hidden flex flex-col shadow-2xl border-2 bg-white dark:bg-[#0a0a1a] animate-in zoom-in duration-300`}
-        style={{ borderColor: charColors.border.replace('border-', '') }}
+        className={`
+          relative rounded-2xl border ${colors.modalBorder}
+          ${colors.modalBg} ${colors.modalShadow}
+          w-full max-w-3xl
+          modal-content flex flex-col
+        `}
+        style={{ overflow: 'hidden' }}
       >
+        <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03] pointer-events-none`}></div>
+
         {/* Header */}
-        <div 
-          className={`relative overflow-hidden p-6 border-b-2 flex items-center justify-between bg-gradient-to-br ${charColors.bg} backdrop-blur-sm`}
-          style={{ borderColor: charColors.border.replace('border-', '') }}
-        >
-          <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
-          
-          <div className="relative flex-1">
-            <h2 className={`text-2xl font-black ${charColors.text} mb-2`}>
-              Create New Ticket
-            </h2>
-            <p className={`text-sm ${colors.textSecondary} flex items-center gap-2`}>
-              <span className={`px-3 py-1 rounded-lg text-xs font-bold bg-gradient-to-r ${charColors.bg} ${charColors.text}`}>
-                {functionality.department}
-              </span>
-              <span>•</span>
-              <span>{functionality.name}</span>
-            </p>
+        <div className={`
+          relative px-6 py-4 border-b ${colors.modalFooterBorder}
+          ${colors.modalHeaderBg}
+        `}>
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h2 className={`text-2xl font-black ${colors.modalHeaderText} mb-2`}>
+                Create New Ticket
+              </h2>
+              <p className={`text-sm ${colors.textSecondary} flex items-center gap-2 flex-wrap`}>
+                <span className={`px-3 py-1 rounded-lg text-xs font-bold bg-gradient-to-r ${charColors.bg} ${charColors.text}`}>
+                  {functionality.department}
+                </span>
+                <span>•</span>
+                <span>{functionality.name}</span>
+              </p>
+            </div>
+            
+            <button
+              onClick={onClose}
+              className={`group relative p-2 rounded-lg transition-all duration-300 ${colors.buttonGhost} ${colors.buttonGhostText}`}
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          
-          <button
-            onClick={onClose}
-            className={`group relative w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 overflow-hidden border-2 bg-gradient-to-br ${colors.cardBg} ${cardCharacters.urgent.border} hover:${cardCharacters.urgent.border}`}
-          >
-            <div 
-              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-              style={{ boxShadow: `inset 0 0 20px ${colors.glowWarning}` }}
-            ></div>
-            <X className={`w-5 h-5 relative z-10 transition-transform duration-300 group-hover:rotate-90 ${cardCharacters.urgent.iconColor}`} />
-          </button>
         </div>
 
         {/* Error Message */}
         {errorMessage && (
-          <div className={`mx-6 mt-4 relative overflow-hidden p-4 rounded-xl border-2 flex items-start gap-3 animate-in slide-in-from-top duration-300 bg-gradient-to-br ${cardCharacters.urgent.bg} ${cardCharacters.urgent.border}`}>
-            <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
-            <AlertCircle className={`w-5 h-5 ${cardCharacters.urgent.iconColor} flex-shrink-0 mt-0.5 relative z-10`} />
-            <div className="flex-1 relative z-10">
-              <p className={`text-sm font-bold ${cardCharacters.urgent.text}`}>{errorMessage}</p>
+          <div className="mx-6 mt-4">
+            <div className={`relative overflow-hidden p-4 rounded-xl border-2 flex items-start gap-3 bg-gradient-to-br ${cardCharacters.urgent.bg} ${cardCharacters.urgent.border}`}>
+              <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
+              <AlertCircle className={`w-5 h-5 ${cardCharacters.urgent.iconColor} flex-shrink-0 mt-0.5 relative z-10`} />
+              <div className="flex-1 relative z-10">
+                <p className={`text-sm font-bold ${cardCharacters.urgent.text}`}>{errorMessage}</p>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
-          <div className="space-y-6">
+        {/* Form Content */}
+        <div className={`relative p-6 ${colors.modalContentBg} max-h-[calc(90vh-240px)] overflow-y-auto`}>
+          <form onSubmit={handleSubmit} className={`space-y-6 ${colors.modalContentText}`}>
             {functionality.formSchema.fields.map((field) => {
               // Conditional rendering: only show urgency-reason if urgency is "High"
               if (field.id === 'default-urgency-reason') {
@@ -254,33 +330,27 @@ export default function TicketFormModal({ functionality, onClose, onSuccess }: P
                 />
               );
             })}
-          </div>
-        </form>
+          </form>
+        </div>
 
         {/* Footer */}
-        <div 
-          className={`relative overflow-hidden p-6 border-t-2 flex items-center justify-end gap-3 bg-gradient-to-br ${colors.cardBg} backdrop-blur-sm`}
-          style={{ borderColor: charColors.border.replace('border-', '') }}
-        >
-          <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
-          
+        <div className={`
+          relative px-6 py-4 border-t ${colors.modalFooterBorder}
+          ${colors.modalFooterBg} flex justify-end gap-3
+        `}>
           <button
             type="button"
             onClick={onClose}
-            className={`group relative px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 overflow-hidden border-2 ${colors.inputBg} ${colors.inputBorder} ${colors.textPrimary}`}
+            className={`group relative px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 overflow-hidden border-2 ${colors.buttonSecondary} ${colors.buttonSecondaryText} disabled:opacity-50`}
           >
-            <div 
-              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-              style={{ boxShadow: `inset 0 0 20px ${colors.glowSecondary}` }}
-            ></div>
-            <span className="relative z-10">Cancel</span>
+            Cancel
           </button>
           
           <button
             type="button"
             onClick={handleSubmit}
             disabled={submitting}
-            className={`group relative px-6 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 overflow-hidden border-2 bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText}`}
+            className={`group relative px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden border-2 bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText}`}
           >
             <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
             <div 
@@ -294,7 +364,7 @@ export default function TicketFormModal({ functionality, onClose, onSuccess }: P
               </>
             ) : (
               <>
-                <Send className="w-4 h-4 relative z-10 transition-transform duration-300 group-hover:translate-x-1" />
+                <Send className="w-4 h-4 relative z-10" />
                 <span className="relative z-10">Submit Ticket</span>
               </>
             )}

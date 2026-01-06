@@ -66,6 +66,18 @@ interface ThemeColors {
   textAccent: string;
   textOnDark: string;
   textOnLight: string;
+
+  // Modal Styles - ADD THESE
+  modalOverlay: string;
+  modalBg: string;
+  modalBorder: string;
+  modalShadow: string;
+  modalHeaderBg: string;
+  modalHeaderText: string;
+  modalContentBg: string;
+  modalContentText: string;
+  modalFooterBg: string;
+  modalFooterBorder: string;
   
   // Input fields
   inputBg: string;
@@ -144,6 +156,10 @@ interface ThemeContextType {
   showToast: (message: string, type: ToastType) => void;
   getCardStyles: (character: CardCharacter) => string;
   getButtonStyles: (variant: 'primary' | 'secondary' | 'ghost') => string;
+  getModalStyles: () => string;
+  getDropdownStyles: () => string;
+  getCalendarStyles: () => string;
+  getSelectStyles: () => string;
 }
 
 /*
@@ -344,6 +360,18 @@ const lightColors: ThemeColors = {
   textAccent: 'text-[#2196F3]',
   textOnDark: 'text-white',
   textOnLight: 'text-[#2C3E50]',
+
+  // Modal Styles - ADD THESE
+  modalOverlay: 'bg-black/40 backdrop-blur-sm', // Blurred overlay
+  modalBg: 'bg-white/95 backdrop-blur-lg', // Solid modal background
+  modalBorder: 'border-[#E0E0E0]/50',
+  modalShadow: 'shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]',
+  modalHeaderBg: 'bg-gradient-to-r from-[#2196F3]/10 to-[#64B5F6]/5',
+  modalHeaderText: 'text-[#2C3E50]',
+  modalContentBg: 'bg-white/90',
+  modalContentText: 'text-[#2C3E50]',
+  modalFooterBg: 'bg-[#FAFAFA]/80',
+  modalFooterBorder: 'border-t-[#E0E0E0]/50',
   
   // Input fields
   inputBg: 'bg-white/70',
@@ -446,6 +474,18 @@ const darkColors: ThemeColors = {
   textAccent: 'text-[#64B5F6]',
   textOnDark: 'text-white',
   textOnLight: 'text-[#1E293B]',
+
+   // Modal Styles - ADD THESE
+  modalOverlay: 'bg-black/60 backdrop-blur-sm', // Darker blurred overlay
+  modalBg: 'bg-[#1E293B]/95 backdrop-blur-lg', // Solid modal background
+  modalBorder: 'border-[#475569]/50',
+  modalShadow: 'shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]',
+  modalHeaderBg: 'bg-gradient-to-r from-[#2196F3]/20 to-[#64B5F6]/10',
+  modalHeaderText: 'text-[#E2E8F0]',
+  modalContentBg: 'bg-[#1E293B]/90',
+  modalContentText: 'text-[#E2E8F0]',
+  modalFooterBg: 'bg-[#0F172A]/80',
+  modalFooterBorder: 'border-t-[#475569]/50',
   
   // Input fields
   inputBg: 'bg-[#1E293B]/50',
@@ -626,6 +666,40 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Add these functions inside the ThemeProvider component (after getButtonStyles function)
+  const getModalStyles = (): string => {
+    return `
+      fixed inset-0 z-50 flex items-center justify-center p-4
+      ${colors.modalOverlay}
+    `;
+  };
+
+  const getDropdownStyles = (): string => {
+    return `
+      ${colors.dropdownBg} ${colors.dropdownBorder} ${colors.dropdownText}
+      backdrop-blur-md border rounded-lg shadow-lg
+      absolute z-50 mt-1 max-h-60 overflow-auto
+      scrollbar-thin scrollbar-track-transparent scrollbar-thumb-current/20
+    `;
+  };
+
+  const getCalendarStyles = (): string => {
+    return `
+      ${colors.calendarBg} ${colors.calendarBorder} ${colors.calendarText}
+      backdrop-blur-md border rounded-lg shadow-lg p-4
+      absolute z-50
+    `;
+  };
+
+  const getSelectStyles = (): string => {
+    return `
+      ${colors.inputBg} ${colors.inputBorder} ${colors.inputText}
+      backdrop-blur-sm border rounded-lg px-3 py-2
+      focus:outline-none focus:ring-2 focus:ring-[#2196F3]/30
+      cursor-pointer appearance-none pr-10
+    `;
+  };
+
   const colors = theme === 'dark' ? darkColors : lightColors;
 
   if (!mounted) {
@@ -648,7 +722,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setTheme, 
       showToast,
       getCardStyles,
-      getButtonStyles
+      getButtonStyles,
+      getModalStyles,
+      getDropdownStyles,
+      getCalendarStyles,
+      getSelectStyles
     }}>
       {/* Global Paper Texture Background */}
       <div className={`fixed inset-0 ${colors.paperTexture} bg-repeat opacity-[0.02] pointer-events-none z-[-1]`}></div>
@@ -809,6 +887,117 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
         .status-pulse {
           animation: statusPulse 2s infinite;
+        }
+
+        /* Modal Base Styles */
+        .modal-backdrop {
+          backdrop-filter: blur(8px);
+          animation: fadeIn 0.2s ease-out;
+        }
+
+        .modal-content {
+          animation: modalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+          max-height: 85vh;
+          overflow-y: auto;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        @keyframes modalSlideIn {
+          from {
+            opacity: 0;
+            transform: translateY(-20px) scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        /* Calendar/DatePicker Styles */
+        .react-datepicker {
+          font-family: inherit !important;
+          border: none !important;
+          border-radius: 12px !important;
+          background: transparent !important;
+        }
+
+        .react-datepicker__header {
+          background: ${colors.calendarHeaderBg} !important;
+          border: none !important;
+          border-radius: 12px 12px 0 0 !important;
+          padding: 16px !important;
+        }
+
+        .react-datepicker__month-container {
+          background: ${colors.calendarBg} !important;
+          border-radius: 12px !important;
+          padding: 8px !important;
+        }
+
+        .react-datepicker__day {
+          color: ${colors.calendarText} !important;
+          border-radius: 6px !important;
+          transition: all 0.2s ease !important;
+        }
+
+        .react-datepicker__day:hover {
+          background: ${colors.calendarDayHover.replace('hover:', '')} !important;
+        }
+
+        .react-datepicker__day--selected {
+          background: ${colors.calendarSelectedBg} !important;
+          color: ${colors.calendarSelectedText} !important;
+          font-weight: 600 !important;
+        }
+
+        .react-datepicker__day--weekend {
+          color: ${colors.calendarWeekend} !important;
+        }
+
+        /* Select/Dropdown Overrides */
+        select, .react-select__control {
+          background: ${colors.inputBg} !important;
+          border-color: ${colors.inputBorder.replace('border-', '')} !important;
+          color: ${colors.inputText} !important;
+        }
+
+        select:focus, .react-select__control--is-focused {
+          border-color: ${colors.borderHover.replace('hover:', '')} !important;
+          box-shadow: 0 0 0 3px ${theme === 'dark' ? 'rgba(100, 181, 246, 0.1)' : 'rgba(33, 150, 243, 0.1)'} !important;
+        }
+
+        .react-select__menu {
+          background: ${colors.dropdownBg} !important;
+          border: 1px solid ${colors.dropdownBorder.replace('border-', '')} !important;
+          box-shadow: ${colors.dropdownShadow} !important;
+        }
+
+        .react-select__option {
+          color: ${colors.dropdownText} !important;
+        }
+
+        .react-select__option:hover {
+          background: ${colors.dropdownHover.replace('hover:', '')} !important;
+        }
+
+        /* Time Picker Styles */
+        .react-time-picker__wrapper,
+        .react-clock__face {
+          background: ${colors.inputBg} !important;
+          border-color: ${colors.inputBorder.replace('border-', '')} !important;
+          color: ${colors.inputText} !important;
+        }
+
+        .react-clock__hand__body {
+          background: ${colors.textAccent} !important;
+        }
+
+        .react-clock__mark__body {
+          background: ${colors.textMuted} !important;
         }
       `}</style>
 

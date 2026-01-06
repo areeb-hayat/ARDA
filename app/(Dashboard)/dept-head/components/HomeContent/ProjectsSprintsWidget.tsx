@@ -7,33 +7,32 @@ import { FolderKanban, Zap, Calendar, Users, ArrowRight, Loader2 } from 'lucide-
 
 interface Project {
   _id: string;
-  name: string;
+  projectNumber: string;
+  title: string;
   description?: string;
   status: string;
-  priority: string;
-  targetDate?: string;
+  health: 'healthy' | 'at-risk' | 'delayed' | 'critical';
   startDate?: string;
-  color?: string;
-  assignees?: any[];
-  taskCounts?: {
-    total: number;
-    completed: number;
-  };
+  targetEndDate?: string;
+  members?: any[];
+  deliverables?: any[];
 }
 
 interface Sprint {
   _id: string;
+  sprintNumber: string;
   title: string;
   description?: string;
   status: string;
-  priority: string;
-  dueDate?: string;
+  health: 'healthy' | 'at-risk' | 'delayed' | 'critical';
   startDate?: string;
-  assignees?: any[];
+  endDate?: string;
+  members?: any[];
+  actions?: any[];
 }
 
-interface StatusData {
-  status: string;
+interface HealthData {
+  health: string;
   count: number;
   color: string;
   percentage: number;
@@ -63,7 +62,7 @@ export default function ProjectsSprintsWidget({ department, onNavigate }: Projec
     try {
       if (view === 'projects') {
         console.log('📊 Fetching projects for department:', department);
-        const url = `/api/projects?department=${encodeURIComponent(department)}`;
+        const url = `/api/ProjectManagement/depthead/projects?department=${encodeURIComponent(department)}`;
         console.log('📊 Projects URL:', url);
         
         const response = await fetch(url);
@@ -73,18 +72,41 @@ export default function ProjectsSprintsWidget({ department, onNavigate }: Projec
           const data = await response.json();
           console.log('📊 Projects response:', data);
           
-          const projectsArray = data.data || data.projects || [];
-          
-          // Store all projects for donut
-          setAllProjects(projectsArray);
-          
-          // Filter for active/in-progress projects for cards
-          const activeProjects = projectsArray.filter((p: Project) => 
-            p.status === 'active' || p.status === 'in-progress' || p.status === 'planning'
-          );
-          
-          console.log('📊 Active projects:', activeProjects.length);
-          setProjects(activeProjects.slice(0, 3)); // Show only 3 projects
+          if (data.success) {
+            const projectsArray = data.projects || [];
+            
+            // Store all projects for donut
+            setAllProjects(projectsArray);
+            
+            // Filter for active projects only for cards
+            const activeProjects = projectsArray.filter((p: Project) => 
+              p.status === 'active'
+            );
+            
+            // Sort by health priority (worst first) then by oldest
+            const healthPriority: Record<string, number> = {
+              'critical': 0,
+              'delayed': 1,
+              'at-risk': 2,
+              'healthy': 3
+            };
+            
+            const sortedProjects = activeProjects.sort((a, b) => {
+              const healthDiff = healthPriority[a.health] - healthPriority[b.health];
+              if (healthDiff !== 0) return healthDiff;
+              
+              // If same health, sort by oldest (earliest start date)
+              const dateA = a.startDate ? new Date(a.startDate).getTime() : Date.now();
+              const dateB = b.startDate ? new Date(b.startDate).getTime() : Date.now();
+              return dateA - dateB;
+            });
+            
+            console.log('📊 Active projects:', activeProjects.length);
+            setProjects(sortedProjects.slice(0, 2)); // Show only 2 projects that need most attention
+          } else {
+            setProjects([]);
+            setAllProjects([]);
+          }
         } else {
           const errorData = await response.json().catch(() => ({}));
           console.error('📊 Projects API error:', errorData);
@@ -93,7 +115,7 @@ export default function ProjectsSprintsWidget({ department, onNavigate }: Projec
         }
       } else {
         console.log('⚡ Fetching sprints for department:', department);
-        const url = `/api/sprints?department=${encodeURIComponent(department)}`;
+        const url = `/api/ProjectManagement/depthead/sprints?department=${encodeURIComponent(department)}`;
         console.log('⚡ Sprints URL:', url);
         
         const response = await fetch(url);
@@ -103,18 +125,41 @@ export default function ProjectsSprintsWidget({ department, onNavigate }: Projec
           const data = await response.json();
           console.log('⚡ Sprints response:', data);
           
-          const sprintsArray = data.data || data.sprints || [];
-          
-          // Store all sprints for donut
-          setAllSprints(sprintsArray);
-          
-          // Filter for active/in-progress sprints for cards
-          const activeSprints = sprintsArray.filter((s: Sprint) => 
-            s.status === 'active' || s.status === 'in-progress'
-          );
-          
-          console.log('⚡ Active sprints:', activeSprints.length);
-          setSprints(activeSprints.slice(0, 3)); // Show only 3 sprints
+          if (data.success) {
+            const sprintsArray = data.sprints || [];
+            
+            // Store all sprints for donut
+            setAllSprints(sprintsArray);
+            
+            // Filter for active sprints only for cards
+            const activeSprints = sprintsArray.filter((s: Sprint) => 
+              s.status === 'active'
+            );
+            
+            // Sort by health priority (worst first) then by oldest
+            const healthPriority: Record<string, number> = {
+              'critical': 0,
+              'delayed': 1,
+              'at-risk': 2,
+              'healthy': 3
+            };
+            
+            const sortedSprints = activeSprints.sort((a, b) => {
+              const healthDiff = healthPriority[a.health] - healthPriority[b.health];
+              if (healthDiff !== 0) return healthDiff;
+              
+              // If same health, sort by oldest (earliest start date)
+              const dateA = a.startDate ? new Date(a.startDate).getTime() : Date.now();
+              const dateB = b.startDate ? new Date(b.startDate).getTime() : Date.now();
+              return dateA - dateB;
+            });
+            
+            console.log('⚡ Active sprints:', activeSprints.length);
+            setSprints(sortedSprints.slice(0, 2)); // Show only 2 sprints that need most attention
+          } else {
+            setSprints([]);
+            setAllSprints([]);
+          }
         } else {
           const errorData = await response.json().catch(() => ({}));
           console.error('⚡ Sprints API error:', errorData);
@@ -136,47 +181,24 @@ export default function ProjectsSprintsWidget({ department, onNavigate }: Projec
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getHealthColor = (health: string) => {
+    // Using consistent pastel colors for both projects and sprints
     if (theme === 'dark') {
       const darkColors: Record<string, string> = {
-        'planning': '#FFB74D',
-        'active': '#64B5F6',
-        'in-progress': '#64B5F6',
-        'on-hold': '#9E9E9E',
-        'completed': '#81C784',
-        'cancelled': '#EF5350'
+        'healthy': '#81C784',      // Sage green - completed character
+        'at-risk': '#FFB74D',      // Golden - interactive character
+        'delayed': '#FFB74D',      // Same golden as at-risk for consistency
+        'critical': '#EF9A9A'      // Soft red - urgent character
       };
-      return darkColors[status] || '#9E9E9E';
+      return darkColors[health] || '#9E9E9E';
     } else {
       const lightColors: Record<string, string> = {
-        'planning': '#FF9800',
-        'active': '#2196F3',
-        'in-progress': '#2196F3',
-        'on-hold': '#757575',
-        'completed': '#4CAF50',
-        'cancelled': '#F44336'
+        'healthy': '#4CAF50',      // Green - completed character
+        'at-risk': '#FF9800',      // Orange - interactive character
+        'delayed': '#FF9800',      // Same orange as at-risk for consistency
+        'critical': '#F44336'      // Red - urgent character
       };
-      return lightColors[status] || '#757575';
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    if (theme === 'dark') {
-      const darkColors: Record<string, string> = {
-        'low': '#81C784',
-        'medium': '#FFB74D',
-        'high': '#EF5350',
-        'critical': '#D32F2F'
-      };
-      return darkColors[priority] || '#9E9E9E';
-    } else {
-      const lightColors: Record<string, string> = {
-        'low': '#4CAF50',
-        'medium': '#FF9800',
-        'high': '#F44336',
-        'critical': '#C62828'
-      };
-      return lightColors[priority] || '#757575';
+      return lightColors[health] || '#757575';
     }
   };
 
@@ -199,35 +221,33 @@ export default function ProjectsSprintsWidget({ department, onNavigate }: Projec
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  // Calculate status breakdown for donut
-  const calculateStatusData = (): StatusData[] => {
+  // Calculate health breakdown for donut
+  const calculateHealthData = (): HealthData[] => {
     const items = view === 'projects' ? allProjects : allSprints;
-    const statusCounts: Record<string, number> = {};
+    const healthCounts: Record<string, number> = {};
     
     items.forEach(item => {
-      const status = item.status || 'unknown';
-      statusCounts[status] = (statusCounts[status] || 0) + 1;
+      const health = item.health || 'healthy';
+      healthCounts[health] = (healthCounts[health] || 0) + 1;
     });
 
     const total = items.length;
-    const statusLabels: Record<string, string> = {
-      'planning': 'Planning',
-      'active': 'Active',
-      'in-progress': 'In Progress',
-      'on-hold': 'On Hold',
-      'completed': 'Completed',
-      'cancelled': 'Cancelled'
+    const healthLabels: Record<string, string> = {
+      'healthy': 'Healthy',
+      'at-risk': 'At Risk',
+      'delayed': 'Delayed',
+      'critical': 'Critical'
     };
 
-    return Object.entries(statusCounts).map(([status, count]) => ({
-      status: statusLabels[status] || status,
+    return Object.entries(healthCounts).map(([health, count]) => ({
+      health: healthLabels[health] || health,
       count,
-      color: getStatusColor(status),
+      color: getHealthColor(health),
       percentage: total > 0 ? (count / total) * 100 : 0
     }));
   };
 
-  const statusData = calculateStatusData();
+  const healthData = calculateHealthData();
   const total = view === 'projects' ? allProjects.length : allSprints.length;
 
   // Donut chart parameters
@@ -331,10 +351,10 @@ export default function ProjectsSprintsWidget({ department, onNavigate }: Projec
                     ></div>
 
                     <div className="relative z-10 flex items-start gap-3">
-                      {/* Color indicator */}
+                      {/* Health indicator */}
                       <div
                         className="w-1.5 h-full rounded-full flex-shrink-0"
-                        style={{ backgroundColor: project.color || (theme === 'dark' ? '#64B5F6' : '#2196F3'), minHeight: '60px' }}
+                        style={{ backgroundColor: getHealthColor(project.health), minHeight: '60px' }}
                       ></div>
                       
                       <div className="flex-1 min-w-0 space-y-2">
@@ -342,10 +362,15 @@ export default function ProjectsSprintsWidget({ department, onNavigate }: Projec
                         <div className="flex items-center gap-2">
                           <FolderKanban className={`h-4 w-4 ${iconColor} flex-shrink-0`} />
                           <h4 className={`font-bold text-sm ${colors.textPrimary} truncate`}>
-                            {project.name}
+                            {project.title}
                           </h4>
                         </div>
                         
+                        {/* Project Number */}
+                        <p className={`text-xs font-bold ${colors.textMuted}`}>
+                          {project.projectNumber}
+                        </p>
+
                         {/* Description */}
                         {project.description && (
                           <p className={`text-xs ${colors.textMuted} line-clamp-1`}>
@@ -353,49 +378,39 @@ export default function ProjectsSprintsWidget({ department, onNavigate }: Projec
                           </p>
                         )}
 
-                        {/* Status & Priority Badges */}
+                        {/* Health Badge */}
                         <div className="flex items-center gap-2 flex-wrap">
                           <div
                             className="px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1"
                             style={{
-                              backgroundColor: `${getStatusColor(project.status)}${theme === 'dark' ? '25' : '15'}`,
-                              color: getStatusColor(project.status)
+                              backgroundColor: `${getHealthColor(project.health)}${theme === 'dark' ? '25' : '15'}`,
+                              color: getHealthColor(project.health)
                             }}
                           >
                             <div
                               className="w-1.5 h-1.5 rounded-full"
-                              style={{ backgroundColor: getStatusColor(project.status) }}
+                              style={{ backgroundColor: getHealthColor(project.health) }}
                             ></div>
-                            {project.status.replace('-', ' ').toUpperCase()}
-                          </div>
-                          
-                          <div
-                            className="px-2 py-0.5 rounded text-xs font-bold capitalize"
-                            style={{
-                              backgroundColor: `${getPriorityColor(project.priority)}${theme === 'dark' ? '25' : '15'}`,
-                              color: getPriorityColor(project.priority)
-                            }}
-                          >
-                            {project.priority}
+                            {project.health.toUpperCase().replace('-', ' ')}
                           </div>
                         </div>
 
                         {/* Meta info */}
                         <div className="flex items-center gap-3">
-                          {project.targetDate && (
+                          {project.targetEndDate && (
                             <div className="flex items-center gap-1">
                               <Calendar className={`h-3 w-3 ${iconColor}`} />
                               <span className={`text-xs font-semibold ${colors.textMuted}`}>
-                                {formatDate(project.targetDate)}
+                                {formatDate(project.targetEndDate)}
                               </span>
                             </div>
                           )}
 
-                          {project.assignees && project.assignees.length > 0 && (
+                          {project.members && project.members.length > 0 && (
                             <div className="flex items-center gap-1">
                               <Users className={`h-3 w-3 ${iconColor}`} />
                               <span className={`text-xs font-semibold ${colors.textMuted}`}>
-                                {project.assignees.length}
+                                {project.members.filter((m: any) => !m.leftAt).length}
                               </span>
                             </div>
                           )}
@@ -432,10 +447,16 @@ export default function ProjectsSprintsWidget({ department, onNavigate }: Projec
                     ></div>
 
                     <div className="relative z-10 flex items-start gap-3">
-                      {/* Icon */}
-                      <div className={`relative overflow-hidden p-2 rounded-lg flex-shrink-0 bg-gradient-to-br ${colors.glassBg} border-2 ${colors.borderStrong}`}>
+                      {/* Icon with health color */}
+                      <div 
+                        className={`relative overflow-hidden p-2 rounded-lg flex-shrink-0 border-2`}
+                        style={{ 
+                          backgroundColor: `${getHealthColor(sprint.health)}${theme === 'dark' ? '25' : '15'}`,
+                          borderColor: getHealthColor(sprint.health)
+                        }}
+                      >
                         <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
-                        <Zap className={`relative z-10 h-4 w-4 ${iconColor}`} />
+                        <Zap className={`relative z-10 h-4 w-4`} style={{ color: getHealthColor(sprint.health) }} />
                       </div>
 
                       <div className="flex-1 min-w-0 space-y-2">
@@ -444,6 +465,11 @@ export default function ProjectsSprintsWidget({ department, onNavigate }: Projec
                           {sprint.title}
                         </h4>
                         
+                        {/* Sprint Number */}
+                        <p className={`text-xs font-bold ${colors.textMuted}`}>
+                          {sprint.sprintNumber}
+                        </p>
+
                         {/* Description */}
                         {sprint.description && (
                           <p className={`text-xs ${colors.textMuted} line-clamp-1`}>
@@ -451,49 +477,39 @@ export default function ProjectsSprintsWidget({ department, onNavigate }: Projec
                           </p>
                         )}
 
-                        {/* Status & Priority Badges */}
+                        {/* Health Badge */}
                         <div className="flex items-center gap-2 flex-wrap">
                           <div
                             className="px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1"
                             style={{
-                              backgroundColor: `${getStatusColor(sprint.status)}${theme === 'dark' ? '25' : '15'}`,
-                              color: getStatusColor(sprint.status)
+                              backgroundColor: `${getHealthColor(sprint.health)}${theme === 'dark' ? '25' : '15'}`,
+                              color: getHealthColor(sprint.health)
                             }}
                           >
                             <div
                               className="w-1.5 h-1.5 rounded-full"
-                              style={{ backgroundColor: getStatusColor(sprint.status) }}
+                              style={{ backgroundColor: getHealthColor(sprint.health) }}
                             ></div>
-                            {sprint.status.replace('-', ' ').toUpperCase()}
-                          </div>
-                          
-                          <div
-                            className="px-2 py-0.5 rounded text-xs font-bold capitalize"
-                            style={{
-                              backgroundColor: `${getPriorityColor(sprint.priority)}${theme === 'dark' ? '25' : '15'}`,
-                              color: getPriorityColor(sprint.priority)
-                            }}
-                          >
-                            {sprint.priority}
+                            {sprint.health.toUpperCase().replace('-', ' ')}
                           </div>
                         </div>
 
                         {/* Meta info */}
                         <div className="flex items-center gap-3">
-                          {sprint.dueDate && (
+                          {sprint.endDate && (
                             <div className="flex items-center gap-1">
                               <Calendar className={`h-3 w-3 ${iconColor}`} />
                               <span className={`text-xs font-semibold ${colors.textMuted}`}>
-                                {formatDate(sprint.dueDate)}
+                                {formatDate(sprint.endDate)}
                               </span>
                             </div>
                           )}
 
-                          {sprint.assignees && sprint.assignees.length > 0 && (
+                          {sprint.members && sprint.members.length > 0 && (
                             <div className="flex items-center gap-1">
                               <Users className={`h-3 w-3 ${iconColor}`} />
                               <span className={`text-xs font-semibold ${colors.textMuted}`}>
-                                {sprint.assignees.length}
+                                {sprint.members.filter((m: any) => !m.leftAt).length}
                               </span>
                             </div>
                           )}
@@ -515,7 +531,7 @@ export default function ProjectsSprintsWidget({ department, onNavigate }: Projec
             )}
           </div>
 
-          {/* Right Side - Status Donut */}
+          {/* Right Side - Health Donut */}
           <div className="col-span-12 lg:col-span-5">
             {total > 0 ? (
               <div 
@@ -541,21 +557,21 @@ export default function ProjectsSprintsWidget({ department, onNavigate }: Projec
                         cy={center}
                         r={radius}
                         fill="none"
-                        stroke={theme === 'dark' ? 'rgba(100, 181, 246, 0.1)' : 'rgba(33, 150, 243, 0.1)'}
+                        stroke={theme === 'dark' ? 'rgba(129, 199, 132, 0.1)' : 'rgba(76, 175, 80, 0.1)'}
                         strokeWidth={strokeWidth}
                       />
 
-                      {/* Status arcs */}
+                      {/* Health arcs */}
                       {(() => {
                         let cumulativePercentage = 0;
-                        return statusData.map((item) => {
+                        return healthData.map((item) => {
                           const startAngle = (cumulativePercentage / 100) * circumference;
                           const arcLength = (item.percentage / 100) * circumference;
                           cumulativePercentage += item.percentage;
 
                           return (
                             <circle
-                              key={item.status}
+                              key={item.health}
                               cx={center}
                               cy={center}
                               r={radius}
@@ -583,15 +599,15 @@ export default function ProjectsSprintsWidget({ department, onNavigate }: Projec
 
                   {/* Legend */}
                   <div className="w-full space-y-2">
-                    {statusData.map((item) => (
-                      <div key={item.status} className="flex items-center justify-between">
+                    {healthData.map((item) => (
+                      <div key={item.health} className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div
                             className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                             style={{ backgroundColor: item.color }}
                           ></div>
                           <span className={`text-xs font-semibold ${colors.textPrimary}`}>
-                            {item.status}
+                            {item.health}
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5">

@@ -16,11 +16,22 @@ import PersonalCalendar from '@/app/components/calendars/PersonalCalendar';
  * - Admin Dashboard
  * 
  * Features:
- * - Personal calendar management
+ * - Personal calendar management with Time Intents
+ * - Day Canvas for planning and reflection
+ * - Day Health computation and visualization
  * - Event creation and editing
- * - Multiple view modes (month, week, day)
- * - Event filtering and search
- * - Theme-aware styling with neon aesthetics
+ * - System-generated events (appointments, deadlines, etc.)
+ * - Auto-completion of expired events
+ * - Time slot availability checking
+ * - Theme-aware styling with character-based colors
+ * - Distinct visualization for past, present, and future days
+ * 
+ * ARDA Time Module Features:
+ * - Time Intents: scheduled events, task blocks, deadlines, focus/recovery blocks, reminders
+ * - Day Canvas: freeform date-bound space for text, checklists, mood tracking, reflection
+ * - Day Health: qualitative measure of workload (Light, Balanced, Heavy, Overloaded)
+ * - Today Control Center: daily overview with stats and upcoming intents
+ * - Calendar Grid: month view with health indicators and event previews
  */
 export default function CalendarView() {
   return (

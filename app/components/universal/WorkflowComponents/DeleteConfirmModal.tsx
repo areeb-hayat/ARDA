@@ -1,5 +1,6 @@
 // ============================================
-// FILE 1: DeleteConfirmModal.tsx
+// DeleteConfirmModal.tsx
+// UPDATED WITH THEME CONTEXT MODAL STYLES
 // ============================================
 
 import React from 'react';
@@ -13,15 +14,24 @@ interface Props {
 }
 
 export default function DeleteConfirmModal({ error, onConfirm, onCancel }: Props) {
-  const { colors, cardCharacters } = useTheme();
+  const { colors, cardCharacters, getModalStyles } = useTheme();
   const urgentChar = cardCharacters.urgent;
   const warningChar = cardCharacters.interactive;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className={`w-full max-w-md relative overflow-hidden rounded-2xl border-2 backdrop-blur-sm bg-gradient-to-br ${error ? warningChar.bg : urgentChar.bg} ${error ? warningChar.border : urgentChar.border} ${colors.shadowToast}`}>
-        {/* Paper texture */}
-        <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
+    <div className={getModalStyles()}>
+      <div className="absolute inset-0 modal-backdrop" onClick={onCancel} aria-hidden="true" />
+      
+      <div 
+        className={`
+          relative rounded-2xl border ${colors.modalBorder}
+          ${colors.modalBg} ${colors.modalShadow}
+          w-full max-w-md
+          modal-content
+        `}
+        style={{ overflow: 'hidden' }}
+      >
+        <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03] pointer-events-none`}></div>
         
         {/* Content */}
         <div className="relative p-6">
@@ -65,7 +75,7 @@ export default function DeleteConfirmModal({ error, onConfirm, onCancel }: Props
                 <div className="flex justify-center pt-4">
                   <button
                     onClick={onCancel}
-                    className={`group relative overflow-hidden rounded-xl px-8 py-3 font-bold text-sm transition-all duration-300 bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText} ${colors.shadowCard} hover:${colors.shadowHover} flex items-center gap-2`}
+                    className={`group relative overflow-hidden rounded-xl px-8 py-3 font-bold text-sm transition-all duration-300 border-2 bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText}`}
                   >
                     <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
                     <div 
@@ -92,7 +102,7 @@ export default function DeleteConfirmModal({ error, onConfirm, onCancel }: Props
                   {/* Cancel Button */}
                   <button
                     onClick={onCancel}
-                    className={`group relative flex-1 overflow-hidden rounded-xl px-4 py-3 font-bold text-sm transition-all duration-300 border-2 ${colors.inputBorder} ${colors.inputBg} ${colors.textPrimary}`}
+                    className={`group relative flex-1 overflow-hidden rounded-xl px-4 py-3 font-bold text-sm transition-all duration-300 border-2 ${colors.buttonSecondary} ${colors.buttonSecondaryText}`}
                   >
                     <div 
                       className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"

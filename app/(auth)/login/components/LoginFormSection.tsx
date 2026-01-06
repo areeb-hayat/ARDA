@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { LogIn, Users, Lock, Eye, EyeOff } from 'lucide-react';
+import { LogIn, Users, Lock, Eye, EyeOff, Mail, ArrowLeft, CheckCircle } from 'lucide-react';
 
 export default function LoginFormSection() {
   // Use dark mode colors directly
@@ -32,21 +32,37 @@ export default function LoginFormSection() {
     border: 'border-[#F44336]/40',
     text: 'text-[#FFCDD2]',
   };
+
+  const successChar = {
+    bg: 'from-[#1B5E20]/40 to-[#2E7D32]/30',
+    border: 'border-[#4CAF50]/40',
+    text: 'text-[#C8E6C9]',
+  };
   
+  // Login states
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Forgot password states
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [forgotUsername, setForgotUsername] = useState('');
+  const [forgotEmail, setForgotEmail] = useState('');
+  
+  // Common states
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  const handleSubmit = async () => {
+  const handleLogin = async () => {
     if (!username || !password) {
       setError('Please fill in all fields');
       return;
     }
 
     setError('');
+    setSuccess('');
     setLoading(true);
 
     try {
@@ -105,10 +121,80 @@ export default function LoginFormSection() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!forgotUsername || !forgotEmail) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(forgotEmail)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    setError('');
+    setSuccess('');
+    setLoading(true);
+
+    try {
+      const response = await fetch('/api/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          username: forgotUsername, 
+          email: forgotEmail 
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setSuccess(data.message);
+        setError('');
+        // Clear form fields
+        setForgotUsername('');
+        setForgotEmail('');
+        
+        // Switch back to login after 5 seconds
+        setTimeout(() => {
+          setIsForgotPassword(false);
+          setSuccess('');
+        }, 5000);
+      } else {
+        setError(data.message || 'Password reset failed');
+        setSuccess('');
+      }
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      setError('An error occurred. Please try again.');
+      setSuccess('');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleSubmit();
+      if (isForgotPassword) {
+        handleForgotPassword();
+      } else {
+        handleLogin();
+      }
     }
+  };
+
+  const toggleForgotPassword = () => {
+    setIsForgotPassword(!isForgotPassword);
+    setError('');
+    setSuccess('');
+    setUsername('');
+    setPassword('');
+    setForgotUsername('');
+    setForgotEmail('');
   };
 
   return (
@@ -138,62 +224,64 @@ export default function LoginFormSection() {
           </div>
           
           <h1 className={`text-2xl lg:text-3xl font-black ${darkColors.textPrimary}`}>
-            Welcome Back
+            {isForgotPassword ? 'Reset Password' : 'Welcome Back'}
           </h1>
           
-          {/* Morse Code: "GOOD LUCK" */}
-          <div className="relative group pt-2 pb-4">
-            <div className="flex items-center gap-1">
-              {/* G: --. */}
-              <div className="h-1 w-5 bg-gradient-to-r from-[#0000FF] to-[#6495ED] rounded-full"></div>
-              <div className="h-1 w-5 bg-gradient-to-r from-[#0000FF] to-[#6495ED] rounded-full"></div>
-              <div className="h-1 w-2 bg-[#87CEEB] rounded-full"></div>
-              <div className="w-1.5"></div>
-              {/* O: --- */}
-              <div className="h-1 w-5 bg-gradient-to-r from-[#0000FF] to-[#6495ED] rounded-full"></div>
-              <div className="h-1 w-5 bg-gradient-to-r from-[#0000FF] to-[#6495ED] rounded-full"></div>
-              <div className="h-1 w-5 bg-gradient-to-r from-[#0000FF] to-[#6495ED] rounded-full"></div>
-              <div className="w-1.5"></div>
-              {/* O: --- */}
-              <div className="h-1 w-5 bg-gradient-to-r from-[#0000FF] to-[#6495ED] rounded-full"></div>
-              <div className="h-1 w-5 bg-gradient-to-r from-[#0000FF] to-[#6495ED] rounded-full"></div>
-              <div className="h-1 w-5 bg-gradient-to-r from-[#0000FF] to-[#6495ED] rounded-full"></div>
-              <div className="w-1.5"></div>
-              {/* D: -.. */}
-              <div className="h-1 w-5 bg-gradient-to-r from-[#0000FF] to-[#6495ED] rounded-full"></div>
-              <div className="h-1 w-2 bg-[#87CEEB] rounded-full"></div>
-              <div className="h-1 w-2 bg-[#87CEEB] rounded-full"></div>
-              <div className="w-2"></div>
-              {/* L: .-.. */}
-              <div className="h-1 w-2 bg-[#FF0000] rounded-full"></div>
-              <div className="h-1 w-5 bg-gradient-to-r from-[#FF0000] to-[#DC143C] rounded-full"></div>
-              <div className="h-1 w-2 bg-[#FF0000] rounded-full"></div>
-              <div className="h-1 w-2 bg-[#FF0000] rounded-full"></div>
-              <div className="w-1.5"></div>
-              {/* U: ..- */}
-              <div className="h-1 w-2 bg-[#FF0000] rounded-full"></div>
-              <div className="h-1 w-2 bg-[#FF0000] rounded-full"></div>
-              <div className="h-1 w-5 bg-gradient-to-r from-[#FF0000] to-[#DC143C] rounded-full"></div>
-              <div className="w-1.5"></div>
-              {/* C: -.-. */}
-              <div className="h-1 w-5 bg-gradient-to-r from-[#6495ED] to-[#87CEEB] rounded-full"></div>
-              <div className="h-1 w-2 bg-[#87CEEB] rounded-full"></div>
-              <div className="h-1 w-5 bg-gradient-to-r from-[#6495ED] to-[#87CEEB] rounded-full"></div>
-              <div className="h-1 w-2 bg-[#87CEEB] rounded-full"></div>
-              <div className="w-1.5"></div>
-              {/* K: -.- */}
-              <div className="h-1 w-5 bg-gradient-to-r from-[#6495ED] to-[#87CEEB] rounded-full"></div>
-              <div className="h-1 w-2 bg-[#87CEEB] rounded-full"></div>
-              <div className="h-1 w-5 bg-gradient-to-r from-[#6495ED] to-[#87CEEB] rounded-full"></div>
+          {/* Morse Code: "GOOD LUCK" - Only show on login */}
+          {!isForgotPassword && (
+            <div className="relative group pt-2 pb-4">
+              <div className="flex items-center gap-1">
+                {/* G: --. */}
+                <div className="h-1 w-5 bg-gradient-to-r from-[#0000FF] to-[#6495ED] rounded-full"></div>
+                <div className="h-1 w-5 bg-gradient-to-r from-[#0000FF] to-[#6495ED] rounded-full"></div>
+                <div className="h-1 w-2 bg-[#87CEEB] rounded-full"></div>
+                <div className="w-1.5"></div>
+                {/* O: --- */}
+                <div className="h-1 w-5 bg-gradient-to-r from-[#0000FF] to-[#6495ED] rounded-full"></div>
+                <div className="h-1 w-5 bg-gradient-to-r from-[#0000FF] to-[#6495ED] rounded-full"></div>
+                <div className="h-1 w-5 bg-gradient-to-r from-[#0000FF] to-[#6495ED] rounded-full"></div>
+                <div className="w-1.5"></div>
+                {/* O: --- */}
+                <div className="h-1 w-5 bg-gradient-to-r from-[#0000FF] to-[#6495ED] rounded-full"></div>
+                <div className="h-1 w-5 bg-gradient-to-r from-[#0000FF] to-[#6495ED] rounded-full"></div>
+                <div className="h-1 w-5 bg-gradient-to-r from-[#0000FF] to-[#6495ED] rounded-full"></div>
+                <div className="w-1.5"></div>
+                {/* D: -.. */}
+                <div className="h-1 w-5 bg-gradient-to-r from-[#0000FF] to-[#6495ED] rounded-full"></div>
+                <div className="h-1 w-2 bg-[#87CEEB] rounded-full"></div>
+                <div className="h-1 w-2 bg-[#87CEEB] rounded-full"></div>
+                <div className="w-2"></div>
+                {/* L: .-.. */}
+                <div className="h-1 w-2 bg-[#FF0000] rounded-full"></div>
+                <div className="h-1 w-5 bg-gradient-to-r from-[#FF0000] to-[#DC143C] rounded-full"></div>
+                <div className="h-1 w-2 bg-[#FF0000] rounded-full"></div>
+                <div className="h-1 w-2 bg-[#FF0000] rounded-full"></div>
+                <div className="w-1.5"></div>
+                {/* U: ..- */}
+                <div className="h-1 w-2 bg-[#FF0000] rounded-full"></div>
+                <div className="h-1 w-2 bg-[#FF0000] rounded-full"></div>
+                <div className="h-1 w-5 bg-gradient-to-r from-[#FF0000] to-[#DC143C] rounded-full"></div>
+                <div className="w-1.5"></div>
+                {/* C: -.-. */}
+                <div className="h-1 w-5 bg-gradient-to-r from-[#6495ED] to-[#87CEEB] rounded-full"></div>
+                <div className="h-1 w-2 bg-[#87CEEB] rounded-full"></div>
+                <div className="h-1 w-5 bg-gradient-to-r from-[#6495ED] to-[#87CEEB] rounded-full"></div>
+                <div className="h-1 w-2 bg-[#87CEEB] rounded-full"></div>
+                <div className="w-1.5"></div>
+                {/* K: -.- */}
+                <div className="h-1 w-5 bg-gradient-to-r from-[#6495ED] to-[#87CEEB] rounded-full"></div>
+                <div className="h-1 w-2 bg-[#87CEEB] rounded-full"></div>
+                <div className="h-1 w-5 bg-gradient-to-r from-[#6495ED] to-[#87CEEB] rounded-full"></div>
+              </div>
+              {/* Hidden message on hover */}
+              <div className="absolute top-full mt-0.5 left-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <p className={`${darkColors.textAccent} text-xs font-medium`}>Good luck :)</p>
+              </div>
             </div>
-            {/* Hidden message on hover */}
-            <div className="absolute top-full mt-0.5 left-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <p className={`${darkColors.textAccent} text-xs font-medium`}>Good luck :)</p>
-            </div>
-          </div>
+          )}
         </div>
 
-        {/* Login Card */}
+        {/* Login/Forgot Password Card */}
         <div className="relative group">
           {/* Card glow */}
           <div className="absolute -inset-0.5 bg-gradient-to-r from-[#0000FF] via-[#6495ED] to-[#87CEEB] rounded-xl opacity-20 group-hover:opacity-40 blur-lg transition-all duration-500"></div>
@@ -205,113 +293,232 @@ export default function LoginFormSection() {
             
             <div className="relative z-10 space-y-4">
               
-              {/* Username Input */}
-              <div className="space-y-2">
-                <label className={`block text-xs font-bold ${darkColors.textAccent} uppercase tracking-wider`}>
-                  Username
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Users className={`h-4 w-4 transition-colors duration-300 ${
-                      focusedField === 'username' ? authoritativeChar.iconColor : 'text-[#6495ED]/60'
-                    }`} />
-                  </div>
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    onFocus={() => setFocusedField('username')}
-                    onBlur={() => setFocusedField(null)}
-                    className={`w-full pl-10 pr-3 py-3 ${darkColors.inputBg} border-2 ${darkColors.inputBorder} rounded-lg focus:border-[#0000FF] ${darkColors.inputFocusBg} focus:ring-2 focus:ring-[#0000FF]/30 outline-none transition-all duration-300 ${darkColors.inputText} text-sm ${darkColors.inputPlaceholder} hover:border-[#6495ED]/50`}
-                    placeholder="Enter your username"
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-
-              {/* Password Input */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className={`block text-xs font-bold ${darkColors.textAccent} uppercase tracking-wider`}>
-                    Password
-                  </label>
-                  <button 
-                    type="button"
-                    className="text-xs text-[#FF0000] hover:text-[#DC143C] font-semibold transition-colors"
-                  >
-                    Forgot?
-                  </button>
-                </div>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className={`h-4 w-4 transition-colors duration-300 ${
-                      focusedField === 'password' ? authoritativeChar.iconColor : 'text-[#6495ED]/60'
-                    }`} />
-                  </div>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    onFocus={() => setFocusedField('password')}
-                    onBlur={() => setFocusedField(null)}
-                    className={`w-full pl-10 pr-10 py-3 ${darkColors.inputBg} border-2 ${darkColors.inputBorder} rounded-lg focus:border-[#0000FF] ${darkColors.inputFocusBg} focus:ring-2 focus:ring-[#0000FF]/30 outline-none transition-all duration-300 ${darkColors.inputText} text-sm ${darkColors.inputPlaceholder} hover:border-[#6495ED]/50`}
-                    placeholder="Enter your password"
-                    disabled={loading}
-                  />
+              {isForgotPassword ? (
+                // Forgot Password Form
+                <>
+                  {/* Back Button */}
                   <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#6495ED]/60 hover:text-[#87CEEB] transition-colors"
+                    onClick={toggleForgotPassword}
+                    className={`flex items-center gap-2 ${darkColors.textAccent} hover:text-[#87CEEB] transition-colors text-sm font-semibold`}
                     disabled={loading}
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to Login
+                  </button>
+
+                  {/* Instructions */}
+                  <p className={`${darkColors.textSecondary} text-sm`}>
+                    Enter your username and email address. We'll send you a new password.
+                  </p>
+
+                  {/* Username Input */}
+                  <div className="space-y-2">
+                    <label className={`block text-xs font-bold ${darkColors.textAccent} uppercase tracking-wider`}>
+                      Username
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Users className={`h-4 w-4 transition-colors duration-300 ${
+                          focusedField === 'forgot-username' ? authoritativeChar.iconColor : 'text-[#6495ED]/60'
+                        }`} />
+                      </div>
+                      <input
+                        type="text"
+                        value={forgotUsername}
+                        onChange={(e) => setForgotUsername(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        onFocus={() => setFocusedField('forgot-username')}
+                        onBlur={() => setFocusedField(null)}
+                        className={`w-full pl-10 pr-3 py-3 ${darkColors.inputBg} border-2 ${darkColors.inputBorder} rounded-lg focus:border-[#0000FF] ${darkColors.inputFocusBg} focus:ring-2 focus:ring-[#0000FF]/30 outline-none transition-all duration-300 ${darkColors.inputText} text-sm ${darkColors.inputPlaceholder} hover:border-[#6495ED]/50`}
+                        placeholder="Enter your username"
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Email Input */}
+                  <div className="space-y-2">
+                    <label className={`block text-xs font-bold ${darkColors.textAccent} uppercase tracking-wider`}>
+                      Email Address
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Mail className={`h-4 w-4 transition-colors duration-300 ${
+                          focusedField === 'forgot-email' ? authoritativeChar.iconColor : 'text-[#6495ED]/60'
+                        }`} />
+                      </div>
+                      <input
+                        type="email"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        onFocus={() => setFocusedField('forgot-email')}
+                        onBlur={() => setFocusedField(null)}
+                        className={`w-full pl-10 pr-3 py-3 ${darkColors.inputBg} border-2 ${darkColors.inputBorder} rounded-lg focus:border-[#0000FF] ${darkColors.inputFocusBg} focus:ring-2 focus:ring-[#0000FF]/30 outline-none transition-all duration-300 ${darkColors.inputText} text-sm ${darkColors.inputPlaceholder} hover:border-[#6495ED]/50`}
+                        placeholder="Enter your email"
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Success Message */}
+                  {success && (
+                    <div className={`bg-gradient-to-br ${successChar.bg} border-2 ${successChar.border} p-3 rounded-lg backdrop-blur-sm flex items-start gap-3`}>
+                      <CheckCircle className="h-5 w-5 text-[#4CAF50] flex-shrink-0 mt-0.5" />
+                      <p className={`${successChar.text} text-xs font-semibold`}>{success}</p>
+                    </div>
+                  )}
+
+                  {/* Error Message */}
+                  {error && (
+                    <div className={`bg-gradient-to-br ${urgentChar.bg} border-2 ${urgentChar.border} p-3 rounded-lg backdrop-blur-sm`}>
+                      <p className={`${urgentChar.text} text-xs font-semibold`}>{error}</p>
+                    </div>
+                  )}
+
+                  {/* Submit Button */}
+                  <button
+                    onClick={handleForgotPassword}
+                    disabled={loading}
+                    className={`relative w-full bg-gradient-to-r from-[#0000FF] to-[#6495ED] hover:from-[#6495ED] hover:to-[#0000FF] text-white font-bold text-base py-3 rounded-lg transition-all duration-500 hover:shadow-xl hover:shadow-[#0000FF]/50 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 overflow-hidden group border border-[#87CEEB]/20`}
+                  >
+                    {/* Paper Texture Layer */}
+                    <div className={`absolute inset-0 ${darkColors.paperTexture} opacity-[0.02]`}></div>
+                    
+                    {/* Internal Glow Layer */}
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                         style={{ boxShadow: 'inset 0 0 20px rgba(100, 181, 246, 0.2)' }}>
+                    </div>
+                    
+                    {/* Shimmer effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                    
+                    {loading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin relative z-10"></div>
+                        <span className="font-bold text-sm relative z-10">Sending...</span>
+                      </>
                     ) : (
-                      <Eye className="h-4 w-4" />
+                      <>
+                        <span className="relative z-10 font-black tracking-wide">RESET PASSWORD</span>
+                        <Mail className="h-5 w-5 relative z-10 group-hover:translate-x-1 transition-transform" />
+                      </>
                     )}
                   </button>
-                </div>
-              </div>
+                </>
+              ) : (
+                // Login Form
+                <>
+                  {/* Username Input */}
+                  <div className="space-y-2">
+                    <label className={`block text-xs font-bold ${darkColors.textAccent} uppercase tracking-wider`}>
+                      Username
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Users className={`h-4 w-4 transition-colors duration-300 ${
+                          focusedField === 'username' ? authoritativeChar.iconColor : 'text-[#6495ED]/60'
+                        }`} />
+                      </div>
+                      <input
+                        type="text"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        onFocus={() => setFocusedField('username')}
+                        onBlur={() => setFocusedField(null)}
+                        className={`w-full pl-10 pr-3 py-3 ${darkColors.inputBg} border-2 ${darkColors.inputBorder} rounded-lg focus:border-[#0000FF] ${darkColors.inputFocusBg} focus:ring-2 focus:ring-[#0000FF]/30 outline-none transition-all duration-300 ${darkColors.inputText} text-sm ${darkColors.inputPlaceholder} hover:border-[#6495ED]/50`}
+                        placeholder="Enter your username"
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
 
-              {/* Error Message */}
-              {error && (
-                <div className={`bg-gradient-to-br ${urgentChar.bg} border-2 ${urgentChar.border} p-3 rounded-lg backdrop-blur-sm`}>
-                  <p className={`${urgentChar.text} text-xs font-semibold`}>{error}</p>
-                </div>
+                  {/* Password Input */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className={`block text-xs font-bold ${darkColors.textAccent} uppercase tracking-wider`}>
+                        Password
+                      </label>
+                      <button 
+                        type="button"
+                        onClick={toggleForgotPassword}
+                        className="text-xs text-[#FF0000] hover:text-[#DC143C] font-semibold transition-colors"
+                        disabled={loading}
+                      >
+                        Forgot?
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Lock className={`h-4 w-4 transition-colors duration-300 ${
+                          focusedField === 'password' ? authoritativeChar.iconColor : 'text-[#6495ED]/60'
+                        }`} />
+                      </div>
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        onFocus={() => setFocusedField('password')}
+                        onBlur={() => setFocusedField(null)}
+                        className={`w-full pl-10 pr-10 py-3 ${darkColors.inputBg} border-2 ${darkColors.inputBorder} rounded-lg focus:border-[#0000FF] ${darkColors.inputFocusBg} focus:ring-2 focus:ring-[#0000FF]/30 outline-none transition-all duration-300 ${darkColors.inputText} text-sm ${darkColors.inputPlaceholder} hover:border-[#6495ED]/50`}
+                        placeholder="Enter your password"
+                        disabled={loading}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#6495ED]/60 hover:text-[#87CEEB] transition-colors"
+                        disabled={loading}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Error Message */}
+                  {error && (
+                    <div className={`bg-gradient-to-br ${urgentChar.bg} border-2 ${urgentChar.border} p-3 rounded-lg backdrop-blur-sm`}>
+                      <p className={`${urgentChar.text} text-xs font-semibold`}>{error}</p>
+                    </div>
+                  )}
+
+                  {/* Submit Button */}
+                  <button
+                    onClick={handleLogin}
+                    disabled={loading}
+                    className={`relative w-full bg-gradient-to-r from-[#0000FF] to-[#6495ED] hover:from-[#6495ED] hover:to-[#0000FF] text-white font-bold text-base py-3 rounded-lg transition-all duration-500 hover:shadow-xl hover:shadow-[#0000FF]/50 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 overflow-hidden group border border-[#87CEEB]/20`}
+                  >
+                    {/* Paper Texture Layer */}
+                    <div className={`absolute inset-0 ${darkColors.paperTexture} opacity-[0.02]`}></div>
+                    
+                    {/* Internal Glow Layer */}
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                         style={{ boxShadow: 'inset 0 0 20px rgba(100, 181, 246, 0.2)' }}>
+                    </div>
+                    
+                    {/* Shimmer effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                    
+                    {loading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin relative z-10"></div>
+                        <span className="font-bold text-sm relative z-10">Signing in...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="relative z-10 font-black tracking-wide">SIGN IN</span>
+                        <LogIn className="h-5 w-5 relative z-10 group-hover:translate-x-1 transition-transform" />
+                      </>
+                    )}
+                  </button>
+                </>
               )}
-
-              {/* Submit Button */}
-              <button
-                onClick={handleSubmit}
-                disabled={loading}
-                className={`relative w-full bg-gradient-to-r from-[#0000FF] to-[#6495ED] hover:from-[#6495ED] hover:to-[#0000FF] text-white font-bold text-base py-3 rounded-lg transition-all duration-500 hover:shadow-xl hover:shadow-[#0000FF]/50 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 overflow-hidden group border border-[#87CEEB]/20`}
-              >
-                {/* Paper Texture Layer */}
-                <div className={`absolute inset-0 ${darkColors.paperTexture} opacity-[0.02]`}></div>
-                
-                {/* Internal Glow Layer */}
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                     style={{ boxShadow: 'inset 0 0 20px rgba(100, 181, 246, 0.2)' }}>
-                </div>
-                
-                {/* Shimmer effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                
-                {loading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin relative z-10"></div>
-                    <span className="font-bold text-sm relative z-10">Signing in...</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="relative z-10 font-black tracking-wide">SIGN IN</span>
-                    <LogIn className="h-5 w-5 relative z-10 group-hover:translate-x-1 transition-transform" />
-                  </>
-                )}
-              </button>
-
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 // ============================================
 // app/components/ticketing/TicketDetailModal.tsx
 // View ticket details and take actions (for creators)
+// UPDATED WITH THEME CONTEXT MODAL STYLES
 // ============================================
 
 'use client';
@@ -39,7 +40,9 @@ interface Props {
 }
 
 export default function TicketDetailModal({ ticketId, userId, onClose, onUpdate }: Props) {
-  const { colors, theme } = useTheme();
+  const { colors, cardCharacters, getModalStyles } = useTheme();
+  const charColors = cardCharacters.informative;
+  
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -96,7 +99,6 @@ export default function TicketDetailModal({ ticketId, userId, onClose, onUpdate 
       setExplanation('');
       setBlockerText('');
       
-      // Show success message
       alert('Action performed successfully!');
       
       if (['close_ticket', 'resolve_ticket'].includes(action)) {
@@ -136,23 +138,20 @@ export default function TicketDetailModal({ ticketId, userId, onClose, onUpdate 
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return '#FFD700';
-      case 'in-progress': return '#0000FF';
-      case 'blocked': return '#FF0000';
-      case 'resolved': return '#00FF00';
-      case 'closed': return '#808080';
-      default: return '#6495ED';
+      case 'pending': return cardCharacters.interactive;
+      case 'in-progress': return cardCharacters.informative;
+      case 'blocked': return cardCharacters.urgent;
+      case 'resolved': return cardCharacters.completed;
+      case 'closed': return cardCharacters.neutral;
+      default: return cardCharacters.informative;
     }
   };
 
-  const modalBg = theme === 'dark' ? '#0a0a1a' : '#ffffff';
-  const modalBorder = theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+      <div className={getModalStyles()}>
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-12 h-12 text-[#0000FF] animate-spin" />
+          <Loader2 className={`w-12 h-12 animate-spin ${charColors.iconColor}`} />
           <p className={colors.textPrimary}>Loading ticket...</p>
         </div>
       </div>
@@ -161,16 +160,22 @@ export default function TicketDetailModal({ ticketId, userId, onClose, onUpdate 
 
   if (error || !ticket) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-        <div 
-          className="max-w-md w-full rounded-2xl p-8"
-          style={{ background: modalBg, border: `1px solid ${modalBorder}` }}
+      <div className={getModalStyles()}>
+        <div className="absolute inset-0 modal-backdrop" onClick={onClose} aria-hidden="true" />
+        
+        <div className={`
+          relative rounded-2xl border ${colors.modalBorder}
+          ${colors.modalBg} ${colors.modalShadow}
+          w-full max-w-md p-8
+          modal-content
+        `}
+          style={{ overflow: 'hidden' }}
         >
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <AlertCircle className={`w-12 h-12 ${cardCharacters.urgent.iconColor} mx-auto mb-4`} />
           <p className={`text-center ${colors.textPrimary} mb-4`}>{error || 'Ticket not found'}</p>
           <button
             onClick={onClose}
-            className="w-full py-3 rounded-lg font-bold bg-gradient-to-r from-[#0000FF] to-[#6495ED] text-white"
+            className={`w-full py-3 rounded-lg font-bold bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText}`}
           >
             Close
           </button>
@@ -181,66 +186,62 @@ export default function TicketDetailModal({ ticketId, userId, onClose, onUpdate 
 
   const isCreator = ticket.raisedBy.userId === userId;
   const hasUnresolvedBlockers = ticket.blockers?.some((b: any) => !b.isResolved) || false;
-  const statusColor = getStatusColor(ticket.status);
+  const statusCharColors = getStatusColor(ticket.status);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+    <div className={getModalStyles()}>
+      <div className="absolute inset-0 modal-backdrop" onClick={onClose} aria-hidden="true" />
+      
       <div 
-        className="w-full max-w-4xl max-h-[90vh] rounded-2xl overflow-hidden flex flex-col shadow-2xl"
-        style={{ background: modalBg, border: `1px solid ${modalBorder}` }}
+        className={`
+          relative rounded-2xl border ${colors.modalBorder}
+          ${colors.modalBg} ${colors.modalShadow}
+          w-full max-w-4xl
+          modal-content flex flex-col
+        `}
+        style={{ overflow: 'hidden' }}
       >
+        <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03] pointer-events-none`}></div>
+
         {/* Header */}
-        <div 
-          className="p-6 border-b flex items-center justify-between"
-          style={{ borderColor: modalBorder }}
-        >
-          <div className="flex items-center gap-4">
-            <div 
-              className="p-3 rounded-xl"
-              style={{ backgroundColor: `${statusColor}20` }}
+        <div className={`
+          relative px-6 py-4 border-b ${colors.modalFooterBorder}
+          ${colors.modalHeaderBg}
+        `}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className={`p-3 rounded-xl bg-gradient-to-r ${statusCharColors.bg}`}>
+                <FileText className={`w-6 h-6 ${statusCharColors.iconColor}`} />
+              </div>
+              <div>
+                <h2 className={`text-2xl font-bold ${colors.modalHeaderText}`}>
+                  {ticket.ticketNumber}
+                </h2>
+                <p className={`text-sm ${colors.textSecondary}`}>
+                  {ticket.functionalityName}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className={`group relative p-2 rounded-lg transition-all duration-300 ${colors.buttonGhost} ${colors.buttonGhostText}`}
             >
-              <FileText className="w-6 h-6" style={{ color: statusColor }} />
-            </div>
-            <div>
-              <h2 className={`text-2xl font-bold ${colors.textPrimary}`}>
-                {ticket.ticketNumber}
-              </h2>
-              <p className={`text-sm ${colors.textSecondary}`}>
-                {ticket.functionalityName}
-              </p>
-            </div>
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className={`w-10 h-10 rounded-lg flex items-center justify-center ${colors.textSecondary} hover:bg-red-500/20 transition-colors`}
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
 
-        {/* Content - Continued in Part 2 */}
-        
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className={`relative p-6 ${colors.modalContentBg} max-h-[calc(90vh-180px)] overflow-y-auto`}>
+          <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 ${colors.modalContentText}`}>
             {/* Left Column - Details */}
             <div className="lg:col-span-2 space-y-6">
               {/* Status Card */}
-              <div 
-                className="p-4 rounded-xl border"
-                style={{ 
-                  borderColor: modalBorder,
-                  background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.02)'
-                }}
-              >
+              <div className={`p-4 rounded-xl border ${colors.border} bg-gradient-to-r ${colors.cardBg}`}>
                 <div className="flex items-center justify-between mb-4">
                   <h3 className={`font-bold ${colors.textPrimary}`}>Status</h3>
                   <div
-                    className="px-3 py-1 rounded-full text-xs font-bold"
-                    style={{
-                      backgroundColor: `${statusColor}20`,
-                      color: statusColor
-                    }}
+                    className={`px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r ${statusCharColors.bg} ${statusCharColors.text}`}
                   >
                     {ticket.status.toUpperCase().replace('-', ' ')}
                   </div>
@@ -263,38 +264,32 @@ export default function TicketDetailModal({ ticketId, userId, onClose, onUpdate 
 
               {/* Blockers */}
               {ticket.blockers && ticket.blockers.length > 0 && (
-                <div 
-                  className="p-4 rounded-xl border border-red-500/50"
-                  style={{ background: 'rgba(255, 0, 0, 0.1)' }}
-                >
+                <div className={`p-4 rounded-xl border-2 bg-gradient-to-r ${cardCharacters.urgent.bg} ${cardCharacters.urgent.border}`}>
                   <div className="flex items-center gap-2 mb-3">
-                    <AlertTriangle className="w-5 h-5 text-red-500" />
-                    <h3 className="font-bold text-red-500">Blockers</h3>
+                    <AlertTriangle className={`w-5 h-5 ${cardCharacters.urgent.iconColor}`} />
+                    <h3 className={`font-bold ${cardCharacters.urgent.text}`}>Blockers</h3>
                   </div>
                   <div className="space-y-3">
                     {ticket.blockers.map((blocker: any, idx: number) => (
                       <div 
                         key={idx}
-                        className="p-3 rounded-lg"
-                        style={{ 
-                          background: theme === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.05)',
-                          opacity: blocker.isResolved ? 0.5 : 1
-                        }}
+                        className={`p-3 rounded-lg ${colors.cardBg}`}
+                        style={{ opacity: blocker.isResolved ? 0.5 : 1 }}
                       >
                         <div className="flex items-start justify-between mb-2">
                           <p className={`text-sm ${colors.textPrimary}`}>
                             {blocker.description}
                           </p>
                           {blocker.isResolved && (
-                            <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 ml-2" />
+                            <CheckCircle className={`w-4 h-4 ${cardCharacters.completed.iconColor} flex-shrink-0 ml-2`} />
                           )}
                         </div>
-                        <p className="text-xs" style={{ color: colors.textMuted.replace('text-', '') }}>
+                        <p className={`text-xs ${colors.textMuted}`}>
                           Reported by {blocker.reportedByName} on{' '}
                           {new Date(blocker.reportedAt).toLocaleDateString()}
                         </p>
                         {blocker.isResolved && (
-                          <p className="text-xs text-green-500 mt-1">
+                          <p className={`text-xs ${cardCharacters.completed.text} mt-1`}>
                             Resolved by {blocker.resolvedByName} on{' '}
                             {new Date(blocker.resolvedAt).toLocaleDateString()}
                           </p>
@@ -306,7 +301,7 @@ export default function TicketDetailModal({ ticketId, userId, onClose, onUpdate 
                     <button
                       onClick={handleResolveBlocker}
                       disabled={actionLoading}
-                      className="mt-3 w-full py-2 rounded-lg font-semibold text-sm bg-green-500 hover:bg-green-600 text-white transition-colors disabled:opacity-50"
+                      className={`mt-3 w-full py-2 rounded-lg font-semibold text-sm bg-gradient-to-r ${cardCharacters.completed.bg} ${cardCharacters.completed.text} transition-colors disabled:opacity-50`}
                     >
                       {actionLoading ? 'Resolving...' : 'Resolve Blocker'}
                     </button>
@@ -323,29 +318,20 @@ export default function TicketDetailModal({ ticketId, userId, onClose, onUpdate 
                 <div className="space-y-3">
                   {ticket.workflowHistory && ticket.workflowHistory.length > 0 ? (
                     ticket.workflowHistory.map((action: any, idx: number) => (
-                    <div 
-                      key={idx}
-                      className="flex gap-3"
-                    >
+                    <div key={idx} className="flex gap-3">
                       <div className="flex flex-col items-center">
-                        <div 
-                          className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                          style={{ backgroundColor: `${statusColor}20` }}
-                        >
-                          <ArrowRight className="w-4 h-4" style={{ color: statusColor }} />
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-r ${statusCharColors.bg}`}>
+                          <ArrowRight className={`w-4 h-4 ${statusCharColors.iconColor}`} />
                         </div>
                         {idx < ticket.workflowHistory.length - 1 && (
-                          <div 
-                            className="w-0.5 flex-1 min-h-[20px]"
-                            style={{ backgroundColor: modalBorder }}
-                          />
+                          <div className={`w-0.5 flex-1 min-h-[20px] ${colors.border}`} />
                         )}
                       </div>
                       <div className="flex-1 pb-4">
                         <p className={`font-semibold ${colors.textPrimary} text-sm`}>
                           {action.actionType.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                         </p>
-                        <p className="text-xs" style={{ color: colors.textMuted.replace('text-', '') }}>
+                        <p className={`text-xs ${colors.textMuted}`}>
                           By {action.performedBy.name} •{' '}
                           {new Date(action.performedAt).toLocaleString()}
                         </p>
@@ -373,11 +359,7 @@ export default function TicketDetailModal({ ticketId, userId, onClose, onUpdate 
                 {Object.entries(ticket.formData).map(([key, value]) => (
                   <div 
                     key={key}
-                    className="p-3 rounded-lg"
-                    style={{ 
-                      background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.02)',
-                      border: `1px solid ${modalBorder}`
-                    }}
+                    className={`p-3 rounded-lg border ${colors.border} ${colors.cardBg}`}
                   >
                     <p className={`text-xs ${colors.textMuted} mb-1`}>
                       {key.replace('default-', '').replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
@@ -402,61 +384,56 @@ export default function TicketDetailModal({ ticketId, userId, onClose, onUpdate 
 
         {/* Footer - Actions (only for creator) */}
         {isCreator && (
-          <div 
-            className="p-6 border-t"
-            style={{ borderColor: modalBorder }}
-          >
-            <div className="flex flex-wrap gap-3">
-              {ticket.status === 'blocked' && hasUnresolvedBlockers && (
-                <button
-                  onClick={handleResolveBlocker}
-                  disabled={actionLoading}
-                  className="px-6 py-2.5 rounded-lg font-semibold text-sm bg-green-500 hover:bg-green-600 text-white transition-colors disabled:opacity-50"
-                >
-                  Resolve Blocker
-                </button>
-              )}
-              
-              {!['resolved', 'closed'].includes(ticket.status) && (
-                <button
-                  onClick={handleResolveTicket}
-                  disabled={actionLoading}
-                  className="px-6 py-2.5 rounded-lg font-semibold text-sm bg-blue-500 hover:bg-blue-600 text-white transition-colors disabled:opacity-50"
-                >
-                  Resolve Ticket
-                </button>
-              )}
-              
-              {ticket.status === 'resolved' && (
-                <button
-                  onClick={handleCloseTicket}
-                  disabled={actionLoading}
-                  className="px-6 py-2.5 rounded-lg font-semibold text-sm bg-gray-500 hover:bg-gray-600 text-white transition-colors disabled:opacity-50"
-                >
-                  Close Ticket
-                </button>
-              )}
-              
-              {ticket.status === 'closed' && (
-                <button
-                  onClick={handleReopenTicket}
-                  disabled={actionLoading}
-                  className="px-6 py-2.5 rounded-lg font-semibold text-sm bg-yellow-500 hover:bg-yellow-600 text-white transition-colors disabled:opacity-50"
-                >
-                  Reopen Ticket
-                </button>
-              )}
-              
+          <div className={`
+            relative px-6 py-4 border-t ${colors.modalFooterBorder}
+            ${colors.modalFooterBg} flex flex-wrap gap-3
+          `}>
+            {ticket.status === 'blocked' && hasUnresolvedBlockers && (
               <button
-                onClick={onClose}
-                className={`ml-auto px-6 py-2.5 rounded-lg font-semibold text-sm border ${colors.border} ${colors.textPrimary} transition-colors`}
-                style={{
-                  background: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'
-                }}
+                onClick={handleResolveBlocker}
+                disabled={actionLoading}
+                className={`px-6 py-2.5 rounded-lg font-semibold text-sm bg-gradient-to-r ${cardCharacters.completed.bg} ${cardCharacters.completed.text} transition-colors disabled:opacity-50`}
               >
-                Close
+                Resolve Blocker
               </button>
-            </div>
+            )}
+            
+            {!['resolved', 'closed'].includes(ticket.status) && (
+              <button
+                onClick={handleResolveTicket}
+                disabled={actionLoading}
+                className={`px-6 py-2.5 rounded-lg font-semibold text-sm bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText} transition-colors disabled:opacity-50`}
+              >
+                Resolve Ticket
+              </button>
+            )}
+            
+            {ticket.status === 'resolved' && (
+              <button
+                onClick={handleCloseTicket}
+                disabled={actionLoading}
+                className={`px-6 py-2.5 rounded-lg font-semibold text-sm bg-gradient-to-r ${cardCharacters.neutral.bg} ${cardCharacters.neutral.text} transition-colors disabled:opacity-50`}
+              >
+                Close Ticket
+              </button>
+            )}
+            
+            {ticket.status === 'closed' && (
+              <button
+                onClick={handleReopenTicket}
+                disabled={actionLoading}
+                className={`px-6 py-2.5 rounded-lg font-semibold text-sm bg-gradient-to-r ${cardCharacters.interactive.bg} ${cardCharacters.interactive.text} transition-colors disabled:opacity-50`}
+              >
+                Reopen Ticket
+              </button>
+            )}
+            
+            <button
+              onClick={onClose}
+              className={`ml-auto px-6 py-2.5 rounded-lg font-semibold text-sm border-2 ${colors.inputBorder} ${colors.textPrimary} transition-colors`}
+            >
+              Close
+            </button>
           </div>
         )}
       </div>

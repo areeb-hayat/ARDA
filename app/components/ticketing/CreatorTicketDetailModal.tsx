@@ -1,6 +1,6 @@
 // ============================================
 // app/components/ticketing/CreatorTicketDetailModal.tsx
-// UPDATED WITH THEME CONTEXT
+// UPDATED WITH THEME CONTEXT MODAL STYLES
 // ============================================
 
 'use client';
@@ -47,7 +47,7 @@ interface Props {
 }
 
 export default function CreatorTicketDetailModal({ ticket, userId, onClose, onUpdate }: Props) {
-  const { colors, cardCharacters } = useTheme();
+  const { colors, cardCharacters, getModalStyles } = useTheme();
   const charColors = cardCharacters.informative;
   
   const [activeTab, setActiveTab] = useState<'details' | 'history'>('details');
@@ -153,366 +153,356 @@ export default function CreatorTicketDetailModal({ ticket, userId, onClose, onUp
   const statusCharColors = getStatusColor(ticket.status);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+    <div className={getModalStyles()}>
+      <div className="absolute inset-0 modal-backdrop" onClick={onClose} aria-hidden="true" />
+      
       <div 
-        className={`w-full max-w-3xl max-h-[90vh] rounded-2xl overflow-hidden flex flex-col shadow-2xl border-2 bg-white dark:bg-[#0a0a1a]`}
-        style={{ borderColor: charColors.border.replace('border-', '') }}
+        className={`
+          relative rounded-2xl border ${colors.modalBorder}
+          ${colors.modalBg} ${colors.modalShadow}
+          w-full max-w-3xl
+          modal-content flex flex-col
+        `}
+        style={{ overflow: 'hidden' }}
       >
-        {/* Header */}
-        <div 
-          className={`relative overflow-hidden p-6 border-b-2 flex items-center justify-between bg-gradient-to-br ${charColors.bg} backdrop-blur-sm`}
-          style={{ borderColor: charColors.border.replace('border-', '') }}
-        >
-          <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
-          
-          <div className="relative flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <h2 className={`text-2xl font-black ${charColors.text}`}>
-                {ticket.ticketNumber}
-              </h2>
-              <div
-                className={`px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r ${statusCharColors.bg} ${statusCharColors.text}`}
-              >
-                {ticket.status.toUpperCase().replace('-', ' ')}
-              </div>
-            </div>
-            <p className={`text-sm ${colors.textSecondary}`}>
-              {ticket.functionalityName}
-            </p>
-          </div>
-          
-          <button
-            onClick={onClose}
-            className={`group relative w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 overflow-hidden border-2 bg-gradient-to-br ${colors.cardBg} ${cardCharacters.urgent.border} hover:${cardCharacters.urgent.border}`}
-          >
-            <div 
-              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-              style={{ boxShadow: `inset 0 0 20px ${colors.glowWarning}` }}
-            ></div>
-            <X className={`w-5 h-5 relative z-10 transition-transform duration-300 group-hover:rotate-90 ${cardCharacters.urgent.iconColor}`} />
-          </button>
-        </div>
+        <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03] pointer-events-none`}></div>
 
-        {/* Tabs */}
-        <div 
-          className={`relative flex border-b-2 bg-gradient-to-br ${colors.cardBg} backdrop-blur-sm`}
-          style={{ borderColor: charColors.border.replace('border-', '') }}
-        >
-          <button
-            onClick={() => setActiveTab('details')}
-            className={`flex-1 px-6 py-3.5 font-bold text-sm transition-all duration-300 relative ${
-              activeTab === 'details'
-                ? charColors.accent
-                : colors.textSecondary
-            }`}
-          >
-            {activeTab === 'details' && (
-              <div 
-                className="absolute bottom-0 left-0 right-0 h-1 rounded-t-full"
-                style={{ backgroundColor: charColors.iconColor.replace('text-', '') }}
-              />
-            )}
-            <span className="relative z-10">Details</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`flex-1 px-6 py-3.5 font-bold text-sm transition-all duration-300 relative ${
-              activeTab === 'history'
-                ? charColors.accent
-                : colors.textSecondary
-            }`}
-          >
-            {activeTab === 'history' && (
-              <div 
-                className="absolute bottom-0 left-0 right-0 h-1 rounded-t-full"
-                style={{ backgroundColor: charColors.iconColor.replace('text-', '') }}
-              />
-            )}
-            <span className="relative z-10">History</span>
-          </button>
+        {/* Header */}
+        <div className={`
+          relative px-6 py-4 border-b ${colors.modalFooterBorder}
+          ${colors.modalHeaderBg}
+        `}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <h2 className={`text-2xl font-black ${colors.modalHeaderText}`}>
+                  {ticket.ticketNumber}
+                </h2>
+                <div
+                  className={`px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r ${statusCharColors.bg} ${statusCharColors.text}`}
+                >
+                  {ticket.status.toUpperCase().replace('-', ' ')}
+                </div>
+              </div>
+              <p className={`text-sm ${colors.textSecondary}`}>
+                {ticket.functionalityName}
+              </p>
+            </div>
+            
+            <button
+              onClick={onClose}
+              className={`group relative p-2 rounded-lg transition-all duration-300 ${colors.buttonGhost} ${colors.buttonGhostText}`}
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActiveTab('details')}
+              className={`flex-1 px-6 py-3 font-bold text-sm transition-all duration-300 rounded-t-lg relative ${
+                activeTab === 'details'
+                  ? `${charColors.accent}`
+                  : colors.textSecondary
+              }`}
+            >
+              {activeTab === 'details' && (
+                <div 
+                  className="absolute bottom-0 left-0 right-0 h-1 rounded-t-full"
+                  style={{ backgroundColor: charColors.iconColor.replace('text-', '') }}
+                />
+              )}
+              <span className="relative z-10">Details</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`flex-1 px-6 py-3 font-bold text-sm transition-all duration-300 rounded-t-lg relative ${
+                activeTab === 'history'
+                  ? `${charColors.accent}`
+                  : colors.textSecondary
+              }`}
+            >
+              {activeTab === 'history' && (
+                <div 
+                  className="absolute bottom-0 left-0 right-0 h-1 rounded-t-full"
+                  style={{ backgroundColor: charColors.iconColor.replace('text-', '') }}
+                />
+              )}
+              <span className="relative z-10">History</span>
+            </button>
+          </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {activeTab === 'details' ? (
-            <div className="space-y-4">
-              {/* Ticket Info */}
-              <div 
-                className={`relative overflow-hidden p-4 rounded-xl border-2 bg-gradient-to-br ${charColors.bg} ${charColors.border}`}
-              >
-                <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
-                <div className="relative grid grid-cols-2 gap-4">
-                  <div>
-                    <p className={`text-xs ${colors.textMuted} mb-1`}>Priority</p>
-                    <p className={`font-semibold ${colors.textPrimary} capitalize`}>
-                      {ticket.priority}
-                    </p>
-                  </div>
-                  <div>
-                    <p className={`text-xs ${colors.textMuted} mb-1`}>Created</p>
-                    <p className={`font-semibold ${colors.textPrimary}`}>
-                      {new Date(ticket.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className={`text-xs ${colors.textMuted} mb-1`}>Current Assignees</p>
-                    <p className={`font-semibold ${colors.textPrimary}`}>
-                      {ticket.currentAssignees?.length || 1} person{ticket.currentAssignees?.length > 1 ? 's' : ''}
-                    </p>
-                  </div>
-                  <div>
-                    <p className={`text-xs ${colors.textMuted} mb-1`}>Workflow Stage</p>
-                    <p className={`font-semibold ${colors.textPrimary}`}>
-                      {ticket.workflowStage}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Blockers Section */}
-              {ticket.blockers && ticket.blockers.length > 0 && (
-                <div>
-                  <h3 className={`font-bold ${colors.textPrimary} mb-3 flex items-center gap-2`}>
-                    <AlertTriangle className={`w-5 h-5 ${cardCharacters.urgent.iconColor}`} />
-                    Blockers
-                  </h3>
-                  <div className="space-y-2">
-                    {ticket.blockers.map((blocker: any, index: number) => (
-                      <div 
-                        key={index}
-                        className={`relative overflow-hidden p-4 rounded-lg border-2 ${
-                          blocker.isResolved 
-                            ? `bg-gradient-to-br ${cardCharacters.completed.bg} ${cardCharacters.completed.border}`
-                            : `bg-gradient-to-br ${cardCharacters.urgent.bg} ${cardCharacters.urgent.border}`
-                        }`}
-                      >
-                        <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
-                        <div className="relative flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <p className={`text-sm font-semibold ${colors.textPrimary} mb-1`}>
-                              {blocker.description}
-                            </p>
-                            <p className={`text-xs ${colors.textMuted}`}>
-                              Reported by {blocker.reportedByName} • {new Date(blocker.reportedAt).toLocaleDateString()}
-                            </p>
-                          </div>
-                          {!blocker.isResolved && isCreator && (
-                            <button
-                              onClick={() => performAction('blocker_resolved')}
-                              disabled={loading}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 flex items-center gap-1 bg-gradient-to-r ${cardCharacters.completed.bg} ${cardCharacters.completed.text}`}
-                            >
-                              {loading ? (
-                                <>
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                  Resolving...
-                                </>
-                              ) : (
-                                <>
-                                  <CheckCircle className="w-3 h-3" />
-                                  Resolve
-                                </>
-                              )}
-                            </button>
-                          )}
-                        </div>
-                        {blocker.isResolved && (
-                          <p className={`text-xs mt-2 flex items-center gap-1 ${cardCharacters.completed.text}`}>
-                            <CheckCircle className="w-3 h-3" />
-                            Resolved by {blocker.resolvedByName} on {new Date(blocker.resolvedAt).toLocaleDateString()}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Info Box for Non-Creators */}
-              {!isCreator && (
+        <div className={`relative p-6 ${colors.modalContentBg} max-h-[calc(90vh-200px)] overflow-y-auto`}>
+          <div className={colors.modalContentText}>
+            {activeTab === 'details' ? (
+              <div className="space-y-4">
+                {/* Ticket Info */}
                 <div 
-                  className={`relative overflow-hidden p-4 rounded-xl flex items-start gap-3 border-2 bg-gradient-to-br ${cardCharacters.informative.bg} ${cardCharacters.informative.border}`}
+                  className={`relative overflow-hidden p-4 rounded-xl border-2 bg-gradient-to-br ${charColors.bg} ${charColors.border}`}
                 >
                   <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
-                  <Info className={`w-5 h-5 ${cardCharacters.informative.iconColor} flex-shrink-0 mt-0.5 relative z-10`} />
-                  <div className="relative z-10">
-                    <p className={`text-sm font-semibold ${colors.textPrimary} mb-1`}>
-                      View Only
-                    </p>
-                    <p className={`text-xs ${colors.textSecondary}`}>
-                      Only the ticket creator can resolve blockers, close, or reopen tickets.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons for Creator */}
-              {isCreator && !selectedAction && (
-                <div className="grid grid-cols-2 gap-3 pt-4">
-                  {isResolved && !isClosed && (
-                    <ActionButton
-                      icon={<XCircle className="w-5 h-5" />}
-                      label="Close Ticket"
-                      description="Mark as complete"
-                      character={cardCharacters.neutral}
-                      onClick={() => performAction('close')}
-                      disabled={loading}
-                    />
-                  )}
-
-                  {(isClosed || isResolved) && (
-                    <ActionButton
-                      icon={<RotateCcw className="w-5 h-5" />}
-                      label="Reopen Ticket"
-                      description="Restart workflow"
-                      character={cardCharacters.interactive}
-                      onClick={() => setSelectedAction('reopen')}
-                      disabled={loading}
-                    />
-                  )}
-                </div>
-              )}
-
-              {/* Reopen Explanation Form */}
-              {selectedAction === 'reopen' && (
-                <div className="space-y-4 pt-4">
-                  <div 
-                    className={`relative overflow-hidden p-4 rounded-xl border-2 bg-gradient-to-br ${cardCharacters.interactive.bg} ${cardCharacters.interactive.border}`}
-                  >
-                    <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
-                    <div className="relative">
-                      <p className={`font-semibold ${colors.textPrimary} mb-2`}>
-                        Reopen Ticket
+                  <div className="relative grid grid-cols-2 gap-4">
+                    <div>
+                      <p className={`text-xs ${colors.textMuted} mb-1`}>Priority</p>
+                      <p className={`font-semibold ${colors.textPrimary} capitalize`}>
+                        {ticket.priority}
                       </p>
-                      <p className={`text-xs ${colors.textSecondary}`}>
-                        This will reset the ticket to the beginning of the workflow and mark it as "pending".
+                    </div>
+                    <div>
+                      <p className={`text-xs ${colors.textMuted} mb-1`}>Created</p>
+                      <p className={`font-semibold ${colors.textPrimary}`}>
+                        {new Date(ticket.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div>
+                      <p className={`text-xs ${colors.textMuted} mb-1`}>Current Assignees</p>
+                      <p className={`font-semibold ${colors.textPrimary}`}>
+                        {ticket.currentAssignees?.length || 1} person{ticket.currentAssignees?.length > 1 ? 's' : ''}
+                      </p>
+                    </div>
+                    <div>
+                      <p className={`text-xs ${colors.textMuted} mb-1`}>Workflow Stage</p>
+                      <p className={`font-semibold ${colors.textPrimary}`}>
+                        {ticket.workflowStage}
                       </p>
                     </div>
                   </div>
-
-                  <div>
-                    <label className={`block text-sm font-bold ${colors.textPrimary} mb-2`}>
-                      Reason for Reopening (Required) *
-                    </label>
-                    <textarea
-                      value={explanation}
-                      onChange={(e) => setExplanation(e.target.value)}
-                      placeholder="Explain why this ticket needs to be reopened..."
-                      rows={4}
-                      className={`w-full px-4 py-3 rounded-lg text-sm resize-none transition-all ${colors.inputBg} border ${colors.inputBorder} ${colors.inputText} ${colors.inputPlaceholder}`}
-                      required
-                    />
-                  </div>
-
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => {
-                        setSelectedAction(null);
-                        setExplanation('');
-                      }}
-                      disabled={loading}
-                      className={`group relative flex-1 px-6 py-3 rounded-lg font-semibold text-sm transition-all duration-300 disabled:opacity-50 overflow-hidden border ${colors.inputBorder} ${colors.inputBg} ${colors.textPrimary}`}
-                    >
-                      <div 
-                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                        style={{ boxShadow: `inset 0 0 20px ${colors.glowSecondary}` }}
-                      ></div>
-                      <span className="relative z-10">Cancel</span>
-                    </button>
-                    <button
-                      onClick={() => performAction('reopen')}
-                      disabled={loading || !explanation}
-                      className={`group relative flex-1 px-6 py-3 rounded-lg font-semibold text-sm transition-transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 overflow-hidden bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText}`}
-                    >
-                      <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
-                      <div 
-                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                        style={{ boxShadow: `inset 0 0 20px ${colors.glowPrimary}` }}
-                      ></div>
-                      {loading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin relative z-10" />
-                          <span className="relative z-10">Reopening...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-4 h-4 relative z-10" />
-                          <span className="relative z-10">Confirm Reopen</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
                 </div>
-              )}
-            </div>
-          ) : (
-            /* History Tab */
-            <div className="space-y-3">
-              {ticket.workflowHistory && ticket.workflowHistory.length > 0 ? (
-                ticket.workflowHistory.slice().reverse().map((entry: any, index: number) => (
+
+                {/* Blockers Section */}
+                {ticket.blockers && ticket.blockers.length > 0 && (
+                  <div>
+                    <h3 className={`font-bold ${colors.textPrimary} mb-3 flex items-center gap-2`}>
+                      <AlertTriangle className={`w-5 h-5 ${cardCharacters.urgent.iconColor}`} />
+                      Blockers
+                    </h3>
+                    <div className="space-y-2">
+                      {ticket.blockers.map((blocker: any, index: number) => (
+                        <div 
+                          key={index}
+                          className={`relative overflow-hidden p-4 rounded-lg border-2 ${
+                            blocker.isResolved 
+                              ? `bg-gradient-to-br ${cardCharacters.completed.bg} ${cardCharacters.completed.border}`
+                              : `bg-gradient-to-br ${cardCharacters.urgent.bg} ${cardCharacters.urgent.border}`
+                          }`}
+                        >
+                          <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
+                          <div className="relative flex items-start justify-between mb-2">
+                            <div className="flex-1">
+                              <p className={`text-sm font-semibold ${colors.textPrimary} mb-1`}>
+                                {blocker.description}
+                              </p>
+                              <p className={`text-xs ${colors.textMuted}`}>
+                                Reported by {blocker.reportedByName} • {new Date(blocker.reportedAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                            {!blocker.isResolved && isCreator && (
+                              <button
+                                onClick={() => performAction('blocker_resolved')}
+                                disabled={loading}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 flex items-center gap-1 bg-gradient-to-r ${cardCharacters.completed.bg} ${cardCharacters.completed.text}`}
+                              >
+                                {loading ? (
+                                  <>
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                    Resolving...
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle className="w-3 h-3" />
+                                    Resolve
+                                  </>
+                                )}
+                              </button>
+                            )}
+                          </div>
+                          {blocker.isResolved && (
+                            <p className={`text-xs mt-2 flex items-center gap-1 ${cardCharacters.completed.text}`}>
+                              <CheckCircle className="w-3 h-3" />
+                              Resolved by {blocker.resolvedByName} on {new Date(blocker.resolvedAt).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Info Box for Non-Creators */}
+                {!isCreator && (
                   <div 
-                    key={index}
-                    className={`relative overflow-hidden p-4 rounded-lg border ${colors.inputBorder} ${colors.inputBg}`}
+                    className={`relative overflow-hidden p-4 rounded-xl flex items-start gap-3 border-2 bg-gradient-to-br ${cardCharacters.informative.bg} ${cardCharacters.informative.border}`}
                   >
                     <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
-                    <div className="relative flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Clock className={`w-4 h-4 ${colors.textMuted}`} />
-                          <p className={`text-sm font-bold ${colors.textPrimary}`}>
-                            {entry.actionType.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
-                          </p>
-                        </div>
-                        {entry.explanation && (
-                          <p className={`text-sm ${colors.textSecondary} mb-2 pl-6`}>
-                            "{entry.explanation}"
-                          </p>
+                    <Info className={`w-5 h-5 ${cardCharacters.informative.iconColor} flex-shrink-0 mt-0.5 relative z-10`} />
+                    <div className="relative z-10">
+                      <p className={`text-sm font-semibold ${colors.textPrimary} mb-1`}>
+                        View Only
+                      </p>
+                      <p className={`text-xs ${colors.textSecondary}`}>
+                        Only the ticket creator can resolve blockers, close, or reopen tickets.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons for Creator */}
+                {isCreator && !selectedAction && (
+                  <div className="grid grid-cols-2 gap-3 pt-4">
+                    {isResolved && !isClosed && (
+                      <ActionButton
+                        icon={<XCircle className="w-5 h-5" />}
+                        label="Close Ticket"
+                        description="Mark as complete"
+                        character={cardCharacters.neutral}
+                        onClick={() => performAction('close')}
+                        disabled={loading}
+                      />
+                    )}
+
+                    {(isClosed || isResolved) && (
+                      <ActionButton
+                        icon={<RotateCcw className="w-5 h-5" />}
+                        label="Reopen Ticket"
+                        description="Restart workflow"
+                        character={cardCharacters.interactive}
+                        onClick={() => setSelectedAction('reopen')}
+                        disabled={loading}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Reopen Explanation Form */}
+                {selectedAction === 'reopen' && (
+                  <div className="space-y-4 pt-4">
+                    <div 
+                      className={`relative overflow-hidden p-4 rounded-xl border-2 bg-gradient-to-br ${cardCharacters.interactive.bg} ${cardCharacters.interactive.border}`}
+                    >
+                      <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
+                      <div className="relative">
+                        <p className={`font-semibold ${colors.textPrimary} mb-2`}>
+                          Reopen Ticket
+                        </p>
+                        <p className={`text-xs ${colors.textSecondary}`}>
+                          This will reset the ticket to the beginning of the workflow and mark it as "pending".
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={`block text-sm font-bold ${colors.textPrimary} mb-2`}>
+                        Reason for Reopening (Required) *
+                      </label>
+                      <textarea
+                        value={explanation}
+                        onChange={(e) => setExplanation(e.target.value)}
+                        placeholder="Explain why this ticket needs to be reopened..."
+                        rows={4}
+                        className={`w-full px-4 py-3 rounded-lg text-sm resize-none transition-all ${colors.inputBg} border ${colors.inputBorder} ${colors.inputText} ${colors.inputPlaceholder}`}
+                        required
+                      />
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          setSelectedAction(null);
+                          setExplanation('');
+                        }}
+                        disabled={loading}
+                        className={`group relative flex-1 px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 overflow-hidden border-2 ${colors.buttonSecondary} ${colors.buttonSecondaryText} disabled:opacity-50`}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => performAction('reopen')}
+                        disabled={loading || !explanation}
+                        className={`group relative flex-1 px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 overflow-hidden border-2 bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText}`}
+                      >
+                        <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
+                        {loading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin relative z-10" />
+                            <span className="relative z-10">Reopening...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-4 h-4 relative z-10" />
+                            <span className="relative z-10">Confirm Reopen</span>
+                          </>
                         )}
-                        {entry.blockerDescription && (
-                          <p className={`text-sm ${colors.textSecondary} mb-2 pl-6`}>
-                            Blocker: "{entry.blockerDescription}"
-                          </p>
-                        )}
-                        <div className="flex items-center gap-2 pl-6">
-                          <User className={`w-3 h-3 ${colors.textMuted}`} />
-                          <p className={`text-xs ${colors.textMuted}`}>
-                            {entry.performedBy?.name} • {new Date(entry.performedAt).toLocaleString()}
-                          </p>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* History Tab */
+              <div className="space-y-3">
+                {ticket.workflowHistory && ticket.workflowHistory.length > 0 ? (
+                  ticket.workflowHistory.slice().reverse().map((entry: any, index: number) => (
+                    <div 
+                      key={index}
+                      className={`relative overflow-hidden p-4 rounded-lg border ${colors.inputBorder} ${colors.inputBg}`}
+                    >
+                      <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
+                      <div className="relative flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Clock className={`w-4 h-4 ${colors.textMuted}`} />
+                            <p className={`text-sm font-bold ${colors.textPrimary}`}>
+                              {entry.actionType.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                            </p>
+                          </div>
+                          {entry.explanation && (
+                            <p className={`text-sm ${colors.textSecondary} mb-2 pl-6`}>
+                              "{entry.explanation}"
+                            </p>
+                          )}
+                          {entry.blockerDescription && (
+                            <p className={`text-sm ${colors.textSecondary} mb-2 pl-6`}>
+                              Blocker: "{entry.blockerDescription}"
+                            </p>
+                          )}
+                          <div className="flex items-center gap-2 pl-6">
+                            <User className={`w-3 h-3 ${colors.textMuted}`} />
+                            <p className={`text-xs ${colors.textMuted}`}>
+                              {entry.performedBy?.name} • {new Date(entry.performedAt).toLocaleString()}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
+                  ))
+                ) : (
+                  <div className={`relative overflow-hidden p-8 rounded-xl border text-center ${colors.inputBorder} ${colors.inputBg}`}>
+                    <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
+                    <Clock className={`relative w-12 h-12 ${colors.textMuted} mx-auto mb-3 opacity-50`} />
+                    <p className={`relative ${colors.textSecondary} text-sm`}>
+                      No history available
+                    </p>
                   </div>
-                ))
-              ) : (
-                <div className={`relative overflow-hidden p-8 rounded-xl border text-center ${colors.inputBorder} ${colors.inputBg}`}>
-                  <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
-                  <Clock className={`relative w-12 h-12 ${colors.textMuted} mx-auto mb-3 opacity-50`} />
-                  <p className={`relative ${colors.textSecondary} text-sm`}>
-                    No history available
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Footer */}
         {!selectedAction && (
-          <div 
-            className={`relative overflow-hidden p-6 border-t-2 bg-gradient-to-br ${colors.cardBg} backdrop-blur-sm`}
-            style={{ borderColor: charColors.border.replace('border-', '') }}
-          >
-            <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
-            
+          <div className={`
+            relative px-6 py-4 border-t ${colors.modalFooterBorder}
+            ${colors.modalFooterBg}
+          `}>
             <button
               onClick={onClose}
-              className={`group relative w-full px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 overflow-hidden border-2 ${colors.inputBg} ${colors.inputBorder} ${colors.textPrimary}`}
+              className={`group relative w-full px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 overflow-hidden border-2 ${colors.buttonSecondary} ${colors.buttonSecondaryText}`}
             >
-              <div 
-                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                style={{ boxShadow: `inset 0 0 20px ${colors.glowPrimary}` }}
-              ></div>
-              <span className="relative z-10">Close</span>
+              Close
             </button>
           </div>
         )}

@@ -2,32 +2,69 @@
 import mongoose from 'mongoose';
 
 const appointmentSchema = new mongoose.Schema({
-  requesterId: {
+  // Creator information
+  creatorId: {
+    type: String,
+    required: true,
+    index: true
+  },
+  creatorUsername: {
+    type: String,
+    required: true,
+    index: true
+  },
+  creatorName: {
     type: String,
     required: true
   },
-  requesterUsername: {
+  
+  // Appointment type
+  type: {
     type: String,
+    enum: ['individual', 'group'],
+    default: 'individual',
     required: true
   },
-  requestedId: {
-    type: String,
-    required: true
-  },
-  requestedUsername: {
-    type: String,
-    required: true
-  },
+  
+  // Participants (for group appointments)
+  participants: [{
+    userId: {
+      type: String,
+      required: true
+    },
+    username: {
+      type: String,
+      required: true
+    },
+    name: {
+      type: String,
+      required: true
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'accepted', 'declined', 'counter-proposed'],
+      default: 'pending'
+    },
+    responseDate: Date,
+    declineReason: String,
+    counterProposal: {
+      date: Date,
+      startTime: String,
+      endTime: String,
+      reason: String
+    }
+  }],
+  
+  // Appointment details
   title: {
     type: String,
     required: true
   },
-  description: {
-    type: String
-  },
+  description: String,
   proposedDate: {
     type: Date,
-    required: true
+    required: true,
+    index: true
   },
   proposedStartTime: {
     type: String,
@@ -37,24 +74,22 @@ const appointmentSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  
+  // Overall status
   status: {
     type: String,
-    enum: ['pending', 'accepted', 'declined', 'counter-proposed'],
-    default: 'pending'
+    enum: ['pending', 'accepted', 'declined', 'partially-accepted', 'cancelled'],
+    default: 'pending',
+    index: true
   },
-  currentOwner: {
-    type: String,
-    required: true
-  },
-  counterProposal: {
-    date: Date,
-    startTime: String,
-    endTime: String,
-    reason: String
-  },
-  declineReason: {
-    type: String
-  },
+  
+  // Calendar integration
+  calendarEventIds: [{
+    userId: String,
+    eventId: mongoose.Schema.Types.ObjectId
+  }],
+  
+  // History tracking
   history: [{
     action: {
       type: String,
@@ -64,36 +99,49 @@ const appointmentSchema = new mongoose.Schema({
       type: String,
       required: true
     },
+    byName: String,
     timestamp: {
       type: Date,
       default: Date.now
     },
-    details: {
-      type: mongoose.Schema.Types.Mixed
-    }
+    details: mongoose.Schema.Types.Mixed
   }]
-}, { 
-  timestamps: true 
+}, {
+  timestamps: true
 });
 
-// Existing indexes for better query performance
-appointmentSchema.index({ requesterUsername: 1, createdAt: -1 });
-appointmentSchema.index({ requestedUsername: 1, createdAt: -1 });
-appointmentSchema.index({ status: 1 });
+// Compound indexes for efficient queries
+appointmentSchema.index({ creatorUsername: 1, status: 1, proposedDate: 1 });
+appointmentSchema.index({ 'participants.username': 1, status: 1, proposedDate: 1 });
+appointmentSchema.index({ creatorUsername: 1, createdAt: -1 });
+appointmentSchema.index({ proposedDate: 1, status: 1 });
 
-// Additional indexes for common query patterns
-// Compound index for filtering appointments by user and status
-appointmentSchema.index({ requesterUsername: 1, status: 1, proposedDate: 1 });
-appointmentSchema.index({ requestedUsername: 1, status: 1, proposedDate: 1 });
+// Method to check if all participants have accepted
+appointmentSchema.methods.isFullyAccepted = function() {
+  return this.participants.every(p => p.status === 'accepted');
+};
 
-// Index for current owner queries (finding appointments pending action)
-appointmentSchema.index({ currentOwner: 1, status: 1, proposedDate: 1 });
+// Method to check if any participant has declined
+appointmentSchema.methods.hasDeclines = function() {
+  return this.participants.some(p => p.status === 'declined');
+};
 
-// Index for date-based queries (calendar views, upcoming appointments)
-appointmentSchema.index({ proposedDate: 1, proposedStartTime: 1 });
+// Method to get pending participants
+appointmentSchema.methods.getPendingParticipants = function() {
+  return this.participants.filter(p => p.status === 'pending');
+};
 
-// Compound index for finding all appointments involving a user (either as requester or requested)
-appointmentSchema.index({ requesterId: 1, proposedDate: -1 });
-appointmentSchema.index({ requestedId: 1, proposedDate: -1 });
+// Method to update overall status based on participant statuses
+appointmentSchema.methods.updateOverallStatus = function() {
+  if (this.hasDeclines()) {
+    this.status = 'declined';
+  } else if (this.isFullyAccepted()) {
+    this.status = 'accepted';
+  } else if (this.participants.some(p => p.status === 'accepted')) {
+    this.status = 'partially-accepted';
+  } else {
+    this.status = 'pending';
+  }
+};
 
 export default mongoose.models.Appointment || mongoose.model('Appointment', appointmentSchema);

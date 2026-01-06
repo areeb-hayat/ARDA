@@ -14,7 +14,8 @@ import PoliciesContent from '@/app/components/universal/PoliciesContent';
 import OrgInfoContent from '@/app/components/universal/OrgInfoContent';
 import WorkflowsContent from '@/app/components/universal/WorkflowsContent';
 import SettingsContent from '@/app/components/universal/SettingsContent';
-import DeptHeadProjectManagement from '@/app/components/depthead-project/DeptHeadProjectManagement';
+// import DeptHeadProjectManagement from '@/app/components/depthead-project/DeptHeadProjectManagement';
+import DeptHeadDashboard from '@/app/components/ProjectManagement/depthead/DeptHeadDashboard';
 import TicketingContent from '@/app/components/ticketing/TicketingContent';
 import AssignedTicketsContent from '@/app/components/ticketing/AssignedTicketsContent';
 import AnnouncementsPage from '@/app/components/DeptHeadAnnouncements/AnnouncementsPage';
@@ -33,7 +34,7 @@ interface UserData {
   employeeNumber?: string;
 }
 
-export default function DeptHeadDashboard() {
+export default function DeptHeadDashboardPage() {
   const router = useRouter();
   const { colors } = useTheme();
   const [activeSection, setActiveSection] = useState('home');
@@ -90,7 +91,12 @@ export default function DeptHeadDashboard() {
         return <TeamContent department={user.department} />;
       
       case 'projects':
-        return <DeptHeadProjectManagement />;
+        return <DeptHeadDashboard onBack={() => setActiveSection('home')}
+        userId={user.username}
+        userName={user.displayName}
+        department={user.department}  // Add this!
+        />;
+        // return <DeptHeadProjectManagement />;
       
       case 'calendar':
         return <CalendarView />;

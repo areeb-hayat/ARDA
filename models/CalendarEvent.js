@@ -1,14 +1,10 @@
 // ===== models/CalendarEvent.js =====
 import mongoose from 'mongoose';
 
-const calendarEventSchema = new mongoose.Schema({
-  userId: {
+const TimeIntentSchema = new mongoose.Schema({
+  type: {
     type: String,
-    required: true,
-    index: true
-  },
-  username: {
-    type: String,
+    enum: ['meeting', 'appointment', 'task-block', 'deadline', 'focus-block', 'recovery-block', 'reminder'],
     required: true
   },
   title: {
@@ -18,74 +14,226 @@ const calendarEventSchema = new mongoose.Schema({
   },
   description: {
     type: String,
-    trim: true
-  },
-  type: {
-    type: String,
-    enum: ['task', 'deadline', 'meeting', 'reminder'],
-    required: true
-  },
-  startDate: {
-    type: Date,
-    required: true,
-    index: true
-  },
-  endDate: {
-    type: Date
+    default: ''
   },
   startTime: {
-    type: String // Format: "HH:MM"
+    type: Date,
+    required: function() {
+      return this.type !== 'deadline' && this.type !== 'reminder';
+    }
   },
   endTime: {
-    type: String // Format: "HH:MM"
+    type: Date,
+    required: function() {
+      return this.type !== 'deadline' && this.type !== 'reminder';
+    }
+  },
+  allDay: {
+    type: Boolean,
+    default: false
+  },
+  isCompleted: {
+    type: Boolean,
+    default: false
+  },
+  completedAt: {
+    type: Date
+  },
+  priority: {
+    type: String,
+    enum: ['low', 'medium', 'high', 'urgent'],
+    default: 'medium'
   },
   color: {
     type: String,
-    required: true
+    default: '#2196F3'
   },
-  isAllDay: {
+  reminderMinutesBefore: {
+    type: Number,
+    default: 15
+  },
+  hasReminder: {
+    type: Boolean,
+    default: true
+  },
+  isRecurring: {
     type: Boolean,
     default: false
   },
-  completed: {
-    type: Boolean,
-    default: false
-  },
-  reminder: {
-    enabled: {
-      type: Boolean,
-      default: false
+  recurringPattern: {
+    frequency: {
+      type: String,
+      enum: ['daily', 'weekly', 'monthly', 'yearly']
     },
-    minutesBefore: {
+    interval: {
       type: Number,
-      default: 15
+      default: 1
+    },
+    endDate: Date
+  },
+  // Link to other modules
+  linkedAppointmentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Appointment'
+  },
+  linkedProjectId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Project'
+  },
+  linkedTaskId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Task'
+  },
+  // System-generated events cannot be deleted by user
+  isSystemGenerated: {
+    type: Boolean,
+    default: false
+  },
+  autoCompleteOnExpiry: {
+    type: Boolean,
+    default: false
+  },
+  // User who owns this event
+  userId: {
+    type: String,
+    required: true,
+    index: true
+  },
+  // Additional metadata
+  location: String,
+  attendees: [{
+    userId: String,
+    name: String,
+    status: {
+      type: String,
+      enum: ['pending', 'accepted', 'declined'],
+      default: 'pending'
     }
+  }],
+  createdBy: {
+    userId: String,
+    name: String
   }
 }, {
   timestamps: true
 });
 
-// Existing compound indexes for efficient queries
-calendarEventSchema.index({ userId: 1, startDate: 1 });
-calendarEventSchema.index({ userId: 1, type: 1 });
+const DayCanvasSchema = new mongoose.Schema({
+  userId: {
+    type: String,
+    required: true,
+    index: true
+  },
+  date: {
+    type: Date,
+    required: true,
+    index: true
+  },
+  content: {
+    type: String,
+    default: ''
+  },
+  checklist: [{
+    id: String,
+    text: String,
+    completed: Boolean,
+    createdAt: Date
+  }],
+  images: [{
+    url: String,
+    caption: String,
+    uploadedAt: Date
+  }],
+  mindMap: {
+    type: mongoose.Schema.Types.Mixed,
+    default: null
+  },
+  tags: [String],
+  mood: {
+    type: String,
+    enum: ['energized', 'focused', 'tired', 'stressed', 'balanced', 'creative']
+  },
+  reflection: {
+    type: String,
+    default: ''
+  }
+}, {
+  timestamps: true
+});
 
-// Enhanced indexes for calendar view optimization
-// Index for date range queries (weekly/monthly calendar views)
-calendarEventSchema.index({ startDate: 1, endDate: 1 });
+const DayHealthMetricsSchema = new mongoose.Schema({
+  userId: {
+    type: String,
+    required: true,
+    index: true
+  },
+  date: {
+    type: Date,
+    required: true,
+    index: true
+  },
+  healthStatus: {
+    type: String,
+    enum: ['light', 'balanced', 'heavy', 'overloaded'],
+    default: 'balanced'
+  },
+  metrics: {
+    totalEvents: {
+      type: Number,
+      default: 0
+    },
+    totalHours: {
+      type: Number,
+      default: 0
+    },
+    meetingHours: {
+      type: Number,
+      default: 0
+    },
+    focusHours: {
+      type: Number,
+      default: 0
+    },
+    deadlineCount: {
+      type: Number,
+      default: 0
+    },
+    highPriorityCount: {
+      type: Number,
+      default: 0
+    },
+    recoveryHours: {
+      type: Number,
+      default: 0
+    }
+  },
+  computedAt: {
+    type: Date,
+    default: Date.now
+  }
+}, {
+  timestamps: true
+});
 
-// Compound index for filtering by user, type, and date range
-calendarEventSchema.index({ userId: 1, type: 1, startDate: 1 });
+// Indexes for better query performance
+TimeIntentSchema.index({ userId: 1, startTime: 1 });
+TimeIntentSchema.index({ userId: 1, endTime: 1 });
+TimeIntentSchema.index({ userId: 1, type: 1 });
+TimeIntentSchema.index({ isCompleted: 1, endTime: 1 });
 
-// Index for filtering completed vs incomplete tasks
-calendarEventSchema.index({ userId: 1, completed: 1, startDate: 1 });
+DayCanvasSchema.index({ userId: 1, date: 1 }, { unique: true });
+DayHealthMetricsSchema.index({ userId: 1, date: 1 }, { unique: true });
 
-// Index for reminder queries (finding events with reminders enabled)
-calendarEventSchema.index({ 'reminder.enabled': 1, startDate: 1 });
+// Middleware to auto-complete events
+TimeIntentSchema.pre('save', async function() {
+  if (this.autoCompleteOnExpiry && this.endTime && new Date() > this.endTime && !this.isCompleted) {
+    this.isCompleted = true;
+    this.completedAt = this.endTime;
+  }
+});
 
-// Index for finding all-day events
-calendarEventSchema.index({ userId: 1, isAllDay: 1, startDate: 1 });
+const TimeIntent = mongoose.models.TimeIntent || mongoose.model('TimeIntent', TimeIntentSchema);
+const DayCanvas = mongoose.models.DayCanvas || mongoose.model('DayCanvas', DayCanvasSchema);
+const DayHealthMetrics = mongoose.models.DayHealthMetrics || mongoose.model('DayHealthMetrics', DayHealthMetricsSchema);
 
-// Text search index for searching event titles and descriptions
-calendarEventSchema.index({ title: 'text', description: 'text' });
-
-export default mongoose.models.CalendarEvent || mongoose.model('CalendarEvent', calendarEventSchema);
+export { TimeIntent, DayCanvas, DayHealthMetrics };

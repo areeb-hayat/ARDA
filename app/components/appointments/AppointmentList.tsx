@@ -6,36 +6,40 @@ import { useTheme } from '@/app/context/ThemeContext';
 import { Calendar, Plus, ArrowLeft, RefreshCw, Filter } from 'lucide-react';
 import AppointmentCard from './AppointmentCard';
 import AppointmentRequest from './AppointmentRequest';
-import AppointmentInvitation from './AppointmentInvitation';
+import AppointmentDetails from './AppointmentDetails';
+
+interface Participant {
+  userId: string;
+  username: string;
+  name: string;
+  status: 'pending' | 'accepted' | 'declined' | 'counter-proposed';
+  responseDate?: Date;
+  declineReason?: string;
+}
 
 interface Appointment {
   _id: string;
-  requesterUsername: string;
-  requestedUsername: string;
+  creatorUsername: string;
+  creatorName: string;
+  type: 'individual' | 'group';
+  participants: Participant[];
   title: string;
   description?: string;
   proposedDate: Date;
   proposedStartTime: string;
   proposedEndTime: string;
-  status: 'pending' | 'accepted' | 'declined' | 'counter-proposed';
-  currentOwner: string;
-  counterProposal?: {
-    date: Date;
-    startTime: string;
-    endTime: string;
-    reason: string;
-  };
-  declineReason?: string;
+  status: 'pending' | 'accepted' | 'declined' | 'partially-accepted' | 'cancelled';
   history: Array<{
     action: string;
     by: string;
+    byName?: string;
     timestamp: Date;
     details?: any;
   }>;
   createdAt: Date;
 }
 
-type StatusFilter = 'all' | 'pending' | 'accepted' | 'declined';
+type StatusFilter = 'all' | 'pending' | 'accepted' | 'declined' | 'partially-accepted';
 
 interface AppointmentListProps {
   onBack?: () => void;
@@ -69,11 +73,7 @@ export default function AppointmentList({ onBack }: AppointmentListProps) {
       if (data.success) {
         const formatted = data.appointments.map((apt: any) => ({
           ...apt,
-          proposedDate: new Date(apt.proposedDate),
-          counterProposal: apt.counterProposal ? {
-            ...apt.counterProposal,
-            date: new Date(apt.counterProposal.date)
-          } : undefined
+          proposedDate: new Date(apt.proposedDate)
         }));
 
         setAppointments(formatted);
@@ -91,44 +91,63 @@ export default function AppointmentList({ onBack }: AppointmentListProps) {
     }
   };
 
-  // Categorize appointments
   const categorizeAppointments = () => {
     const userData = localStorage.getItem('user');
-    if (!userData) return { needResponse: [], waitingResponse: [], upcoming: [], past: [] };
+    if (!userData) return { needResponse: [], waiting: [], upcoming: [], past: [] };
     
     const user = JSON.parse(userData);
     const now = new Date();
 
-    const needResponse = appointments.filter(apt => 
-      apt.currentOwner === user.username && 
-      apt.status === 'pending'
-    );
+    // Need Response: User is participant and their status is pending
+    const needResponse = appointments.filter(apt => {
+      // Skip cancelled appointments
+      if (apt.status === 'cancelled') return false;
+      
+      const participant = apt.participants.find(p => p.username === user.username);
+      return participant && participant.status === 'pending';
+    });
 
-    const waitingResponse = appointments.filter(apt => 
-      apt.currentOwner !== user.username && 
-      apt.status === 'pending'
-    );
+    // Waiting: User is creator and appointment is not fully accepted/declined/cancelled
+    const waiting = appointments.filter(apt => {
+      // Must be creator
+      if (apt.creatorUsername !== user.username) return false;
+      
+      // Skip if user is also a participant who hasn't responded
+      const userParticipant = apt.participants.find(p => p.username === user.username);
+      if (userParticipant && userParticipant.status === 'pending') return false;
+      
+      // Include if status is pending or partially-accepted
+      // This covers: waiting for all to respond, or some accepted but not all
+      return apt.status === 'pending' || apt.status === 'partially-accepted';
+    });
 
+    // Upcoming: Appointment is accepted and in the future
     const upcoming = appointments.filter(apt => {
       if (apt.status !== 'accepted') return false;
+      
       const appointmentDate = new Date(apt.proposedDate);
       const [hours, minutes] = apt.proposedEndTime.split(':');
       appointmentDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
       return appointmentDate >= now;
     });
 
+    // Past: Completed, cancelled, declined, or past date
     const past = appointments.filter(apt => {
-      if (apt.status === 'declined') return true;
+      // Cancelled or declined
+      if (apt.status === 'cancelled' || apt.status === 'declined') return true;
+      
+      // Accepted but past
       if (apt.status === 'accepted') {
         const appointmentDate = new Date(apt.proposedDate);
         const [hours, minutes] = apt.proposedEndTime.split(':');
         appointmentDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
         return appointmentDate < now;
       }
+      
       return false;
     });
 
-    return { needResponse, waitingResponse, upcoming, past };
+    return { needResponse, waiting, upcoming, past };
   };
 
   const filterByStatus = (apts: Appointment[]) => {
@@ -136,48 +155,45 @@ export default function AppointmentList({ onBack }: AppointmentListProps) {
     return apts.filter(apt => apt.status === statusFilter);
   };
 
-  const { needResponse, waitingResponse, upcoming, past } = categorizeAppointments();
+  const { needResponse, waiting, upcoming, past } = categorizeAppointments();
 
   const userData = localStorage.getItem('user');
   const currentUsername = userData ? JSON.parse(userData).username : '';
 
   return (
     <div className="min-h-screen p-4 md:p-6 space-y-4">
-      {/* Header with Back Button and Filters */}
-      <div className={`relative overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${charColors.bg} ${charColors.border} ${colors.shadowCard} transition-all duration-300`}>
-        {/* Paper Texture */}
+      {/* Header */}
+      <div className={`relative overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${charColors.bg} ${charColors.border} ${colors.shadowCard}`}>
         <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
         
         <div className="relative p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              {/* Back Button */}
-              <button
-                onClick={handleBack}
-                className={`group relative flex items-center justify-center p-2 rounded-lg transition-all duration-300 overflow-hidden bg-gradient-to-br ${colors.cardBg} border ${charColors.border} ${colors.borderHover} backdrop-blur-sm ${colors.shadowCard} hover:${colors.shadowHover}`}
-              >
-                {/* Paper Texture */}
-                <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
-                
-                {/* Internal Glow */}
-                <div 
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                  style={{ boxShadow: `inset 0 0 14px ${colors.glowPrimary}, inset 0 0 28px ${colors.glowPrimary}` }}
-                ></div>
-                
-                <ArrowLeft className={`h-5 w-5 relative z-10 transition-transform duration-300 group-hover:-translate-x-1 ${charColors.iconColor}`} />
-              </button>
+              {onBack && (
+                <button
+                  onClick={handleBack}
+                  className={`group relative flex items-center justify-center p-2 rounded-lg transition-all duration-300 overflow-hidden bg-gradient-to-br ${colors.cardBg} border ${charColors.border} backdrop-blur-sm ${colors.shadowCard} hover:${colors.shadowHover}`}
+                >
+                  <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
+                  <div 
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                    style={{ boxShadow: `inset 0 0 14px ${colors.glowPrimary}` }}
+                  ></div>
+                  <ArrowLeft className={`h-5 w-5 relative z-10 transition-transform duration-300 group-hover:-translate-x-1 ${charColors.iconColor}`} />
+                </button>
+              )}
 
               <div className={`p-2 rounded-lg bg-gradient-to-r ${charColors.bg}`}>
                 <Calendar className={`h-5 w-5 ${charColors.iconColor}`} />
               </div>
               <div>
                 <h1 className={`text-xl font-black ${charColors.text}`}>Appointments</h1>
-                <p className={`text-xs ${colors.textMuted}`}>Manage your meetings and invitations</p>
+                <p className={`text-xs ${colors.textMuted}`}>
+                  {appointments.length} total • {needResponse.length} need response • {waiting.length} waiting • {upcoming.length} upcoming
+                </p>
               </div>
             </div>
             
-            {/* New Request Button */}
             <button
               onClick={() => setShowRequestModal(true)}
               className={`group relative flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-300 overflow-hidden bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText} border border-transparent ${colors.shadowCard} hover:${colors.shadowHover}`}
@@ -188,18 +204,18 @@ export default function AppointmentList({ onBack }: AppointmentListProps) {
                 style={{ boxShadow: `inset 0 0 14px ${colors.glowPrimary}, inset 0 0 28px ${colors.glowPrimary}` }}
               ></div>
               <Plus className="h-4 w-4 relative z-10 transition-transform duration-300 group-hover:rotate-90" />
-              <span className="text-sm font-bold relative z-10">New Request</span>
+              <span className="text-sm font-bold relative z-10">New Appointment</span>
             </button>
           </div>
 
-          {/* Always Visible Filters */}
+          {/* Filters */}
           <div className={`p-3 rounded-lg border ${charColors.border} bg-gradient-to-br ${colors.cardBg} backdrop-blur-sm`}>
             <div className="flex items-center space-x-2 mb-2">
               <Filter className={`h-4 w-4 ${colors.textMuted}`} />
               <span className={`text-xs font-bold ${colors.textSecondary}`}>Filter by status:</span>
             </div>
             <div className="flex flex-wrap gap-2">
-              {(['all', 'pending', 'accepted', 'declined'] as StatusFilter[]).map(status => (
+              {(['all', 'pending', 'accepted', 'partially-accepted', 'declined'] as StatusFilter[]).map(status => (
                 <button
                   key={status}
                   onClick={() => setStatusFilter(status)}
@@ -209,7 +225,7 @@ export default function AppointmentList({ onBack }: AppointmentListProps) {
                       : `${colors.inputBg} ${colors.textSecondary} hover:${colors.textPrimary}`
                   }`}
                 >
-                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                  {status === 'partially-accepted' ? 'Partial' : status.charAt(0).toUpperCase() + status.slice(1)}
                 </button>
               ))}
             </div>
@@ -222,7 +238,8 @@ export default function AppointmentList({ onBack }: AppointmentListProps) {
           <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
           <div className="relative flex items-center justify-center">
             <div className="text-center space-y-3">
-              <div className={`w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mx-auto`} style={{ borderColor: charColors.iconColor.replace('text-', '') }}></div>
+              <div className={`w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mx-auto`} 
+                   style={{ borderColor: charColors.iconColor.replace('text-', '') }}></div>
               <p className={`${colors.textMuted} text-sm`}>Loading appointments...</p>
             </div>
           </div>
@@ -231,7 +248,7 @@ export default function AppointmentList({ onBack }: AppointmentListProps) {
         <>
           {/* Action Required Section */}
           {needResponse.length > 0 && (
-            <div className={`relative overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${cardCharacters.urgent.bg} ${cardCharacters.urgent.border} ${colors.shadowCard} transition-all duration-300`}>
+            <div className={`relative overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${cardCharacters.urgent.bg} ${cardCharacters.urgent.border} ${colors.shadowCard}`}>
               <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
               <div className="relative p-4">
                 <div className="flex items-center justify-between mb-4">
@@ -247,7 +264,7 @@ export default function AppointmentList({ onBack }: AppointmentListProps) {
                   />
                 </div>
                 <p className={`text-xs ${colors.textMuted} mb-4`}>
-                  These appointments are waiting for your response
+                  These appointments need your response
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filterByStatus(needResponse).map(appointment => (
@@ -255,7 +272,6 @@ export default function AppointmentList({ onBack }: AppointmentListProps) {
                       key={appointment._id}
                       appointment={appointment}
                       currentUsername={currentUsername}
-                      view="received"
                       onViewDetails={setSelectedAppointment}
                     />
                   ))}
@@ -265,13 +281,13 @@ export default function AppointmentList({ onBack }: AppointmentListProps) {
           )}
 
           {/* Waiting for Response Section */}
-          {waitingResponse.length > 0 && (
-            <div className={`relative overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${cardCharacters.interactive.bg} ${cardCharacters.interactive.border} ${colors.shadowCard} transition-all duration-300`}>
+          {waiting.length > 0 && (
+            <div className={`relative overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${cardCharacters.interactive.bg} ${cardCharacters.interactive.border} ${colors.shadowCard}`}>
               <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
               <div className="relative p-4">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className={`text-lg font-black ${cardCharacters.interactive.text}`}>
-                    Waiting for Response ({waitingResponse.length})
+                    Waiting for Response ({waiting.length})
                   </h2>
                   <RefreshCw 
                     onClick={fetchAppointments}
@@ -279,18 +295,29 @@ export default function AppointmentList({ onBack }: AppointmentListProps) {
                   />
                 </div>
                 <p className={`text-xs ${colors.textMuted} mb-4`}>
-                  Appointments you sent that are awaiting response
+                  Appointments you created awaiting participant responses
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filterByStatus(waitingResponse).map(appointment => (
-                    <AppointmentCard
-                      key={appointment._id}
-                      appointment={appointment}
-                      currentUsername={currentUsername}
-                      view="sent"
-                      onViewDetails={setSelectedAppointment}
-                    />
-                  ))}
+                  {filterByStatus(waiting).map(appointment => {
+                    const acceptedCount = appointment.participants.filter(p => p.status === 'accepted').length;
+                    const totalCount = appointment.participants.length;
+                    const hasPartialAcceptance = acceptedCount > 0 && acceptedCount < totalCount;
+                    
+                    return (
+                      <div key={appointment._id} className="relative">
+                        {hasPartialAcceptance && (
+                          <div className={`absolute -top-2 -right-2 z-10 px-2 py-1 rounded-full text-xs font-bold ${cardCharacters.informative.bg} ${cardCharacters.informative.border} border`}>
+                            {acceptedCount}/{totalCount} ✓
+                          </div>
+                        )}
+                        <AppointmentCard
+                          appointment={appointment}
+                          currentUsername={currentUsername}
+                          onViewDetails={setSelectedAppointment}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -298,7 +325,7 @@ export default function AppointmentList({ onBack }: AppointmentListProps) {
 
           {/* Upcoming Section */}
           {upcoming.length > 0 && (
-            <div className={`relative overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${cardCharacters.completed.bg} ${cardCharacters.completed.border} ${colors.shadowCard} transition-all duration-300`}>
+            <div className={`relative overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${cardCharacters.completed.bg} ${cardCharacters.completed.border} ${colors.shadowCard}`}>
               <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
               <div className="relative p-4">
                 <div className="flex items-center justify-between mb-4">
@@ -311,7 +338,7 @@ export default function AppointmentList({ onBack }: AppointmentListProps) {
                   />
                 </div>
                 <p className={`text-xs ${colors.textMuted} mb-4`}>
-                  Confirmed appointments scheduled for the future
+                  Confirmed appointments
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filterByStatus(upcoming).map(appointment => (
@@ -319,7 +346,6 @@ export default function AppointmentList({ onBack }: AppointmentListProps) {
                       key={appointment._id}
                       appointment={appointment}
                       currentUsername={currentUsername}
-                      view="sent"
                       onViewDetails={setSelectedAppointment}
                     />
                   ))}
@@ -330,7 +356,7 @@ export default function AppointmentList({ onBack }: AppointmentListProps) {
 
           {/* Past Section */}
           {past.length > 0 && (
-            <div className={`relative overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${cardCharacters.neutral.bg} ${cardCharacters.neutral.border} ${colors.shadowCard} transition-all duration-300`}>
+            <div className={`relative overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${cardCharacters.neutral.bg} ${cardCharacters.neutral.border} ${colors.shadowCard}`}>
               <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
               <div className="relative p-4">
                 <div className="flex items-center justify-between mb-4">
@@ -343,7 +369,7 @@ export default function AppointmentList({ onBack }: AppointmentListProps) {
                   />
                 </div>
                 <p className={`text-xs ${colors.textMuted} mb-4`}>
-                  Past and declined appointments
+                  Past, cancelled, and declined appointments
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filterByStatus(past).map(appointment => (
@@ -351,7 +377,6 @@ export default function AppointmentList({ onBack }: AppointmentListProps) {
                       key={appointment._id}
                       appointment={appointment}
                       currentUsername={currentUsername}
-                      view="sent"
                       onViewDetails={setSelectedAppointment}
                     />
                   ))}
@@ -372,14 +397,19 @@ export default function AppointmentList({ onBack }: AppointmentListProps) {
                   No Appointments Yet
                 </h3>
                 <p className={`text-sm ${colors.textMuted} mb-4`}>
-                  Start by creating your first appointment request
+                  Start by creating your first appointment
                 </p>
                 <button
                   onClick={() => setShowRequestModal(true)}
-                  className={`inline-flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-300 overflow-hidden bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText} border border-transparent ${colors.shadowCard} hover:${colors.shadowHover}`}
+                  className={`group relative inline-flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-300 overflow-hidden bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText} border border-transparent ${colors.shadowCard} hover:${colors.shadowHover}`}
                 >
-                  <Plus className="h-4 w-4" />
-                  <span className="text-sm font-bold">Create Request</span>
+                  <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
+                  <div 
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                    style={{ boxShadow: `inset 0 0 14px ${colors.glowPrimary}, inset 0 0 28px ${colors.glowPrimary}` }}
+                  ></div>
+                  <Plus className="h-4 w-4 relative z-10" />
+                  <span className="text-sm font-bold relative z-10">Create Appointment</span>
                 </button>
               </div>
             </div>
@@ -395,9 +425,9 @@ export default function AppointmentList({ onBack }: AppointmentListProps) {
         />
       )}
 
-      {/* Invitation/Details Modal */}
+      {/* Details Modal */}
       {selectedAppointment && (
-        <AppointmentInvitation
+        <AppointmentDetails
           appointment={selectedAppointment}
           currentUsername={currentUsername}
           onClose={() => setSelectedAppointment(null)}

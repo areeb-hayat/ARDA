@@ -93,7 +93,7 @@ export default function DeptHeadSidebar({ activeItem, onItemClick, department, i
     },
     {
       id: 'projects',
-      label: 'Projects',
+      label: 'Project Management',
       icon: <FolderKanban className="h-3.5 w-3.5" />,
       color: theme === 'dark' ? '#64B5F6' : '#2196F3',
       visible: true

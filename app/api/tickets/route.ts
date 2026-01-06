@@ -1,9 +1,11 @@
-// ===== app/api/tickets/route.ts (UPDATED) =====
+// ===== app/api/tickets/route.ts (FIXED ATTACHMENT HANDLING) =====
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongoose';
 import Ticket from '@/models/Ticket';
 import Functionality from '@/models/Functionality';
 import FormData from '@/models/FormData';
+import { sendTicketAssignmentEmail } from '@/app/utils/sendTicketNotification';
+import { saveAttachment } from '@/app/utils/fileUpload';
 
 // GET - Get tickets created by user
 export async function GET(request: NextRequest) {
@@ -104,7 +106,8 @@ export async function POST(request: NextRequest) {
     console.log('🎫 Creating ticket with data:', {
       functionalityId,
       raisedBy,
-      formDataKeys: Object.keys(formData || {})
+      formDataKeys: Object.keys(formData || {}),
+      attachments: formData?.['default-attachments']
     });
 
     // Validation
@@ -256,6 +259,75 @@ export async function POST(request: NextRequest) {
     });
     const ticketNumber = `TKT-${year}-${String(count + 1).padStart(6, '0')}`;
 
+    // ============================================
+    // 💾 SAVE ATTACHMENTS TO DISK (FIXED)
+    // ============================================
+    if (formData['default-attachments']) {
+      try {
+        console.log('📎 Processing attachments:', formData['default-attachments']);
+        
+        const attachmentData = formData['default-attachments'];
+        const savedPaths: string[] = [];
+        
+        // Handle array of files
+        if (Array.isArray(attachmentData)) {
+          for (const item of attachmentData) {
+            // Check if it's a proper file object with data
+            if (item && typeof item === 'object' && (item.data || item.content) && item.name) {
+              try {
+                const fileData = item.data || item.content;
+                const savedPath = saveAttachment(ticketNumber, {
+                  name: item.name,
+                  data: fileData,
+                  type: item.type || item.mimeType || 'application/octet-stream'
+                });
+                savedPaths.push(savedPath);
+                console.log(`✅ Saved: ${item.name} → ${savedPath}`);
+              } catch (fileError) {
+                console.error(`❌ Failed to save ${item.name}:`, fileError);
+              }
+            } else {
+              console.warn('⚠️ Invalid file object (missing data):', typeof item === 'object' ? JSON.stringify(item).substring(0, 100) : item);
+            }
+          }
+        }
+        // Handle single file object
+        else if (typeof attachmentData === 'object' && (attachmentData.data || attachmentData.content) && attachmentData.name) {
+          try {
+            const fileData = attachmentData.data || attachmentData.content;
+            const savedPath = saveAttachment(ticketNumber, {
+              name: attachmentData.name,
+              data: fileData,
+              type: attachmentData.type || attachmentData.mimeType || 'application/octet-stream'
+            });
+            savedPaths.push(savedPath);
+            console.log(`✅ Saved: ${attachmentData.name} → ${savedPath}`);
+          } catch (fileError) {
+            console.error(`❌ Failed to save file:`, fileError);
+          }
+        }
+        else {
+          console.warn('⚠️ Attachment data is not in expected format. Received:', typeof attachmentData === 'string' ? attachmentData : JSON.stringify(attachmentData).substring(0, 200));
+        }
+        
+        // Replace file data with paths
+        if (savedPaths.length > 0) {
+          formData['default-attachments'] = savedPaths;
+          console.log(`✅ Stored ${savedPaths.length} file path(s) in formData`);
+        } else {
+          formData['default-attachments'] = [];
+          console.log('⚠️ No valid attachments saved - check frontend file upload');
+        }
+        
+      } catch (attachmentError) {
+        console.error('❌ Attachment processing failed:', attachmentError);
+        formData['default-attachments'] = [];
+      }
+    } else {
+      console.log('ℹ️ No attachments in request');
+    }
+    // ============================================
+
     // Determine priority
     let priority = 'medium';
     if (formData['default-urgency']) {
@@ -284,9 +356,9 @@ export async function POST(request: NextRequest) {
       currentAssignee,
       currentAssignees,
       groupLead,
-      primaryCredit, // NEW: Initialize credit
-      secondaryCredits, // NEW: Initialize credit
-      contributors: [], // Keep for audit
+      primaryCredit,
+      secondaryCredits,
+      contributors: [],
       blockers: [],
       workflowHistory: [
         {
@@ -307,9 +379,35 @@ export async function POST(request: NextRequest) {
 
     await ticket.save();
 
-    console.log('✅ Ticket created successfully:', ticketNumber);
-    console.log('   Primary credit:', primaryCredit?.name || 'None');
-    console.log('   Secondary credits:', secondaryCredits.length);
+    console.log(`✅ Ticket created: ${ticketNumber} → ${primaryCredit?.name || currentAssignee}`);
+    console.log(`📋 FormData attachments:`, ticket.formData['default-attachments']);
+
+    // ============================================
+    // ✨ SEND EMAIL NOTIFICATION
+    // ============================================
+    try {
+      const ticketForEmail = ticket.toObject();
+      
+      // Send to primary assignee
+      await sendTicketAssignmentEmail(ticketForEmail, FormData);
+      
+      // Send to group members if applicable
+      if (groupLead && currentAssignees.length > 1) {
+        for (const memberId of currentAssignees) {
+          if (memberId !== groupLead) {
+            try {
+              const memberTicket = { ...ticketForEmail, currentAssignee: memberId };
+              await sendTicketAssignmentEmail(memberTicket, FormData);
+            } catch (err) {
+              // Silent fail for individual group members
+            }
+          }
+        }
+      }
+    } catch (emailError) {
+      console.error(`❌ Email failed: ${ticketNumber}`);
+    }
+    // ============================================
 
     return NextResponse.json({
       success: true,
@@ -326,7 +424,8 @@ export async function POST(request: NextRequest) {
     if (error instanceof Error) {
       console.error('Error details:', {
         name: error.name,
-        message: error.message
+        message: error.message,
+        stack: error.stack
       });
     }
     return NextResponse.json(
