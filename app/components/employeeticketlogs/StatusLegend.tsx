@@ -2,69 +2,76 @@
 'use client';
 
 import React from 'react';
-import { TicketStatusCount, STATUS_LABELS } from './types';
 import { useTheme } from '@/app/context/ThemeContext';
+
+interface TicketStatusCount {
+  status: string;
+  count: number;
+  percentage: number;
+  color?: string;
+}
 
 interface StatusLegendProps {
   data: TicketStatusCount[];
 }
 
 export default function StatusLegend({ data }: StatusLegendProps) {
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
+
+  // Color mapping matching DeptTicketsDonut
+  const getStatusColor = (status: string): string => {
+    const isDark = theme === 'dark';
+    
+    // Normalize status for comparison
+    const normalizedStatus = status.toLowerCase().trim();
+    
+    if (normalizedStatus.includes('pending')) {
+      return isDark ? '#FFB74D' : '#FFA500'; // Orange
+    }
+    if (normalizedStatus.includes('progress')) {
+      return isDark ? '#64B5F6' : '#2196F3'; // Blue
+    }
+    if (normalizedStatus.includes('blocked')) {
+      return isDark ? '#EF5350' : '#F44336'; // Red
+    }
+    if (normalizedStatus.includes('resolved')) {
+      return isDark ? '#81C784' : '#4CAF50'; // Green
+    }
+    if (normalizedStatus.includes('closed')) {
+      return isDark ? '#9E9E9E' : '#757575'; // Gray
+    }
+    
+    // Default gray
+    return isDark ? '#9E9E9E' : '#757575';
+  };
 
   return (
-    <div className="space-y-3">
-      <h3 className={`text-lg font-bold ${colors.textPrimary} mb-4`}>
-        Status Breakdown
-      </h3>
-      <div className="space-y-2">
-        {data.map((item) => {
-          const statusLabel = STATUS_LABELS[item.status as keyof typeof STATUS_LABELS] || item.status;
-          
-          return (
-            <div
-              key={item.status}
-              className={`group relative flex items-center justify-between p-3 rounded-xl border-2 transition-all duration-200 overflow-hidden ${colors.cardBg} ${colors.border} hover:${colors.cardBgHover}`}
-            >
-              {/* Paper Texture */}
-              <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
-              
-              {/* Hover Glow */}
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                   style={{ boxShadow: `inset 0 0 20px ${colors.glowPrimary}` }}>
-              </div>
-              
-              <div className="relative flex items-center gap-3 flex-1">
-                <div
-                  className="w-4 h-4 rounded-full flex-shrink-0"
-                  style={{
-                    backgroundColor: item.color,
-                    boxShadow: `0 0 10px ${item.color}60`,
-                  }}
-                />
-                <span className={`font-bold ${colors.textPrimary} text-sm`}>
-                  {statusLabel}
-                </span>
-              </div>
-
-              <div className="relative flex items-center gap-4">
-                <span className={`font-black ${colors.textAccent} text-lg`}>
-                  {item.count}
-                </span>
-                <span
-                  className="font-bold text-xs px-2 py-1 rounded-lg"
-                  style={{
-                    backgroundColor: `${item.color}20`,
-                    color: item.color,
-                  }}
-                >
-                  {item.percentage.toFixed(1)}%
-                </span>
-              </div>
+    <div className="flex-1 space-y-2">
+      {data.map((item, index) => {
+        const statusColor = item.color || getStatusColor(item.status);
+        
+        return (
+          <div key={`${item.status}-${index}`} className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div
+                className="w-3 h-3 rounded-full flex-shrink-0"
+                style={{ backgroundColor: statusColor }}
+              ></div>
+              <span className={`text-sm font-semibold ${colors.textPrimary}`}>
+                {item.status}
+              </span>
             </div>
-          );
-        })}
-      </div>
+            <div className="flex items-center gap-2">
+              <span className={`text-sm font-bold ${colors.textPrimary}`}>
+                {item.count}
+              </span>
+              <span className={`text-xs font-semibold ${colors.textMuted}`}>
+                ({item.percentage.toFixed(1)}%)
+              </span>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

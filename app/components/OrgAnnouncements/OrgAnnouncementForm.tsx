@@ -1,8 +1,8 @@
 // app/components/OrgAnnouncements/OrgAnnouncementForm.tsx
 'use client';
 
-import React, { useState } from 'react';
-import { Calendar, X, AlertCircle, Paperclip, FileText, Image as ImageIcon, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Calendar, X, AlertCircle, Paperclip, FileText, Image as ImageIcon, Trash2, Users } from 'lucide-react';
 import { Attachment } from '../DeptHeadAnnouncements/types';
 import { useTheme } from '@/app/context/ThemeContext';
 
@@ -15,6 +15,8 @@ interface OrgAnnouncementFormProps {
   setExpirationDate: (date: string) => void;
   attachments: Attachment[];
   setAttachments: (attachments: Attachment[]) => void;
+  targetAudience: string;
+  setTargetAudience: (audience: string) => void;
   onCancel: () => void;
   onPost: () => void;
 }
@@ -28,13 +30,43 @@ export default function OrgAnnouncementForm({
   setExpirationDate,
   attachments,
   setAttachments,
+  targetAudience,
+  setTargetAudience,
   onCancel,
   onPost
 }: OrgAnnouncementFormProps) {
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
   const [showCalendar, setShowCalendar] = useState(false);
   const [errors, setErrors] = useState({ title: false, content: false });
-  const selectedColor = '#FF0000'; // Always red for org announcements
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [loadingDepartments, setLoadingDepartments] = useState(true);
+  
+  // Green theme colors for org announcements
+  const orgColor = theme === 'dark' ? '#10B981' : '#059669';
+  const orgBorder = theme === 'dark' ? 'border-emerald-500/60' : 'border-emerald-600';
+  const iconColor = theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600';
+
+  // Fetch departments on component mount
+  useEffect(() => {
+    fetchDepartments();
+  }, []);
+
+  const fetchDepartments = async () => {
+    try {
+      const response = await fetch('/api/departments');
+      if (response.ok) {
+        const data = await response.json();
+        setDepartments(data.departments || []);
+      } else {
+        console.error('Failed to fetch departments');
+      }
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+    } finally {
+      setLoadingDepartments(false);
+    }
+  };
 
   const handlePost = () => {
     const newErrors = {
@@ -50,26 +82,50 @@ export default function OrgAnnouncementForm({
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
+    if (!files || files.length === 0) return;
 
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const newAttachment: Attachment = {
+    setUploadingFiles(true);
+
+    const newAttachments: Attachment[] = [];
+
+    for (const file of Array.from(files)) {
+      try {
+        // Validate file size (max 10MB)
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        if (file.size > maxSize) {
+          alert(`File ${file.name} is too large. Maximum size is 10MB.`);
+          continue;
+        }
+
+        // Read file as base64
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        // Determine file type
+        const isImage = file.type.startsWith('image/');
+        
+        newAttachments.push({
           name: file.name,
-          url: event.target?.result as string,
-          type: file.type.startsWith('image/') ? 'image' : 'document',
+          url: base64, // Store base64 temporarily, will be saved to disk on submit
+          type: isImage ? 'image' : 'document',
           size: file.size,
           uploadedAt: new Date().toISOString()
-        };
-        setAttachments([...attachments, newAttachment]);
-      };
-      reader.readAsDataURL(file);
-    });
+        });
+      } catch (error) {
+        console.error(`Error processing file ${file.name}:`, error);
+        alert(`Failed to process file: ${file.name}`);
+      }
+    }
 
-    e.target.value = '';
+    setAttachments([...attachments, ...newAttachments]);
+    setUploadingFiles(false);
+    e.target.value = ''; // Reset input
   };
 
   const removeAttachment = (index: number) => {
@@ -169,15 +225,12 @@ export default function OrgAnnouncementForm({
   };
 
   return (
-    <div 
-      className={`mb-4 p-4 bg-gradient-to-br ${colors.cardBg} backdrop-blur-lg rounded-xl border-3 transition-all duration-300`}
-      style={{ borderColor: selectedColor }}
-    >
+    <div className="p-4">
       <div className="flex items-center justify-between mb-3">
         <h4 className={`text-base font-black ${colors.textPrimary}`}>New Organization Announcement</h4>
         <button
           onClick={onCancel}
-          className={`p-1 hover:${colors.sidebarItemBgHover} rounded-lg transition-all`}
+          className={`p-1 hover:${colors.cardBgHover} rounded-md transition-all`}
         >
           <X className={`h-4 w-4 ${colors.textPrimary}`} />
         </button>
@@ -194,14 +247,14 @@ export default function OrgAnnouncementForm({
               setNewTitle(e.target.value);
               if (errors.title) setErrors({ ...errors, title: false });
             }}
-            className={`w-full px-3 py-2 ${colors.inputBg} backdrop-blur-sm border-2 rounded-lg ${colors.textPrimary} placeholder-gray-400 focus:outline-none font-bold transition-all text-sm ${
+            className={`w-full px-3 py-2 ${colors.inputBg} backdrop-blur-sm border-2 rounded-lg ${colors.textPrimary} text-sm ${colors.inputPlaceholder} focus:outline-none font-bold transition-all ${
               errors.title 
-                ? 'border-[#FFD700] shadow-[0_0_8px_rgba(255,215,0,0.5)]' 
-                : `${colors.inputBorder} focus:border-[#FF0000]`
+                ? `shadow-[0_0_10px_${theme === 'dark' ? 'rgba(16,185,129,0.5)' : 'rgba(5,150,105,0.5)'}] ${orgBorder}`
+                : `${colors.inputBorder} focus:${orgBorder}`
             }`}
           />
           {errors.title && (
-            <div className="flex items-center gap-1.5 mt-1.5 text-[#FFD700] text-xs font-semibold">
+            <div className={`flex items-center gap-1.5 mt-1.5 text-xs font-semibold ${iconColor}`}>
               <AlertCircle className="h-3 w-3" />
               Title is required
             </div>
@@ -218,30 +271,64 @@ export default function OrgAnnouncementForm({
               if (errors.content) setErrors({ ...errors, content: false });
             }}
             rows={3}
-            className={`w-full px-3 py-2 ${colors.inputBg} backdrop-blur-sm border-2 rounded-lg ${colors.textPrimary} placeholder-gray-400 focus:outline-none font-semibold resize-none transition-all text-sm ${
+            className={`w-full px-3 py-2 ${colors.inputBg} backdrop-blur-sm border-2 rounded-lg ${colors.textPrimary} text-sm ${colors.inputPlaceholder} focus:outline-none font-semibold resize-none transition-all ${
               errors.content 
-                ? 'border-[#FFD700] shadow-[0_0_8px_rgba(255,215,0,0.5)]' 
-                : `${colors.inputBorder} focus:border-[#FF0000]`
+                ? `shadow-[0_0_10px_${theme === 'dark' ? 'rgba(16,185,129,0.5)' : 'rgba(5,150,105,0.5)'}] ${orgBorder}`
+                : `${colors.inputBorder} focus:${orgBorder}`
             }`}
           />
           {errors.content && (
-            <div className="flex items-center gap-1.5 mt-1.5 text-[#FFD700] text-xs font-semibold">
+            <div className={`flex items-center gap-1.5 mt-1.5 text-xs font-semibold ${iconColor}`}>
               <AlertCircle className="h-3 w-3" />
               Content is required
             </div>
           )}
         </div>
 
+        {/* Target Audience Selector */}
+        <div>
+          <label className={`block text-xs font-bold ${colors.textPrimary} mb-2 flex items-center gap-1.5`}>
+            <Users className={`h-3.5 w-3.5 ${iconColor}`} />
+            Target Audience
+          </label>
+          <select
+            value={targetAudience}
+            onChange={(e) => setTargetAudience(e.target.value)}
+            disabled={loadingDepartments}
+            className={`w-full px-3 py-2 ${colors.inputBg} backdrop-blur-sm border-2 ${orgBorder} rounded-lg ${colors.textPrimary} text-sm font-semibold transition-all hover:${colors.borderStrong} focus:outline-none appearance-none cursor-pointer ${loadingDepartments ? 'opacity-50 cursor-wait' : ''}`}
+            style={{
+              boxShadow: `0 0 10px ${orgColor}30`
+            }}
+          >
+            <option value="organization">Entire Organization</option>
+            {loadingDepartments ? (
+              <option disabled>Loading departments...</option>
+            ) : (
+              departments.map(dept => (
+                <option key={dept} value={dept}>
+                  {dept} Department
+                </option>
+              ))
+            )}
+          </select>
+          <p className={`text-xs ${colors.textMuted} mt-1.5 font-medium`}>
+            {targetAudience === 'organization' 
+              ? 'This announcement will be visible to all employees across the organization' 
+              : `This announcement will only be visible to ${targetAudience} department and HR`}
+          </p>
+        </div>
+
         {/* Attachments */}
         <div>
-          <label className={`flex items-center gap-2 px-3 py-2 ${colors.inputBg} hover:${colors.inputFocusBg} border-2 ${colors.inputBorder} hover:border-[#FF0000] rounded-lg ${colors.textPrimary} font-bold cursor-pointer transition-all w-fit text-sm`}>
-            <Paperclip className="h-4 w-4" />
-            Add Attachments
+          <label className={`flex items-center gap-1.5 px-3 py-2 ${colors.inputBg} hover:${colors.inputFocusBg} border-2 ${colors.inputBorder} hover:${orgBorder} rounded-lg ${colors.textPrimary} text-sm font-bold cursor-pointer transition-all w-fit ${uploadingFiles ? 'opacity-50 cursor-wait' : ''}`}>
+            <Paperclip className="h-3.5 w-3.5" />
+            {uploadingFiles ? 'Uploading...' : 'Add Attachments'}
             <input
               type="file"
               multiple
               accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
               onChange={handleFileUpload}
+              disabled={uploadingFiles}
               className="hidden"
             />
           </label>
@@ -252,15 +339,15 @@ export default function OrgAnnouncementForm({
                 {attachments.length} file{attachments.length !== 1 ? 's' : ''} attached
               </p>
               {attachments.map((attachment, idx) => (
-                <div key={idx} className={`flex items-center gap-2 p-2 ${colors.glassBg} rounded-lg border ${colors.border}`}>
+                <div key={idx} className={`flex items-center gap-2 p-2 bg-gradient-to-br ${colors.glassBg} rounded-md border ${colors.border}`}>
                   {attachment.type === 'image' ? (
-                    <ImageIcon className={`h-4 w-4 ${colors.textAccent}`} />
+                    <ImageIcon className={`h-3.5 w-3.5 ${iconColor}`} />
                   ) : (
-                    <FileText className={`h-4 w-4 ${colors.textAccent}`} />
+                    <FileText className={`h-3.5 w-3.5 ${iconColor}`} />
                   )}
                   <div className="flex-1 min-w-0">
                     <p className={`text-xs ${colors.textPrimary} truncate font-semibold`}>{attachment.name}</p>
-                    <p className={`text-[10px] ${colors.textMuted}`}>{formatFileSize(attachment.size)}</p>
+                    <p className={`text-xs ${colors.textMuted}`}>{formatFileSize(attachment.size)}</p>
                   </div>
                   <button
                     onClick={() => removeAttachment(idx)}
@@ -278,7 +365,7 @@ export default function OrgAnnouncementForm({
         {/* Calendar */}
         <div className="relative">
           <label className={`block text-xs font-bold ${colors.textPrimary} mb-2 flex items-center gap-1.5`}>
-            <Calendar className="h-4 w-4" style={{ color: selectedColor }} />
+            <Calendar className={`h-3.5 w-3.5 ${iconColor}`} />
             Expiration Date (Optional - Expires at 5:00 PM)
           </label>
           
@@ -286,27 +373,26 @@ export default function OrgAnnouncementForm({
             <button
               type="button"
               onClick={() => setShowCalendar(!showCalendar)}
-              className={`flex-1 h-10 px-3 py-2 ${colors.inputBg} backdrop-blur-sm border-2 rounded-lg ${colors.textPrimary} font-semibold text-left transition-all hover:opacity-80 focus:outline-none text-sm`}
+              className={`flex-1 h-10 px-3 py-2 ${colors.inputBg} backdrop-blur-sm border-2 ${orgBorder} rounded-lg ${colors.textPrimary} text-sm font-semibold text-left transition-all hover:${colors.borderStrong} focus:outline-none`}
               style={{
-                borderColor: selectedColor,
-                boxShadow: `0 0 10px ${selectedColor}50`
+                boxShadow: `0 0 10px ${orgColor}30`
               }}
             >
               <div className="flex items-center justify-between">
                 <span className={expirationDate ? colors.textPrimary : colors.textMuted}>
                   {getSelectedDateFormatted()}
                 </span>
-                <Calendar className="h-4 w-4" style={{ color: selectedColor }} />
+                <Calendar className={`h-3.5 w-3.5 ${iconColor}`} />
               </div>
             </button>
             
             {expirationDate && (
               <button
                 onClick={() => setExpirationDate('')}
-                className={`h-10 px-3 py-2 ${colors.sidebarItemBg} hover:${colors.sidebarItemBgHover} border-2 ${colors.border} rounded-lg ${colors.textPrimary} font-bold transition-all flex items-center gap-1.5 text-sm`}
+                className={`h-10 px-3 py-2 bg-gradient-to-br ${colors.glassBg} hover:${colors.cardBgHover} border-2 ${colors.border} rounded-lg ${colors.textPrimary} text-xs font-bold transition-all flex items-center gap-1.5`}
                 title="Clear expiration date"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5" />
                 Clear
               </button>
             )}
@@ -320,28 +406,27 @@ export default function OrgAnnouncementForm({
               />
               
               <div 
-                className={`absolute z-50 mt-2 p-3 ${colors.cardBg} backdrop-blur-xl border-3 rounded-lg w-full max-w-sm shadow-2xl`}
+                className={`absolute z-50 mt-1.5 p-3 bg-gradient-to-br ${colors.cardBg} backdrop-blur-xl border-2 ${orgBorder} rounded-lg w-full max-w-sm ${colors.shadowDropdown}`}
                 style={{
-                  borderColor: selectedColor,
-                  boxShadow: `0 0 20px ${selectedColor}80`
+                  boxShadow: `0 0 20px ${orgColor}40`
                 }}
               >
                 <div className="flex items-center justify-between mb-3">
                   <button
                     onClick={() => changeMonth(-1)}
-                    className={`p-1.5 hover:${colors.sidebarItemBgHover} rounded-lg transition-all ${colors.textPrimary} font-bold text-lg`}
+                    className={`p-1.5 hover:${colors.cardBgHover} rounded-md transition-all ${colors.textPrimary} font-bold text-lg`}
                   >
                     ←
                   </button>
                   <span 
                     className="font-black text-sm"
-                    style={{ color: selectedColor }}
+                    style={{ color: orgColor }}
                   >
                     {getMonthYear()}
                   </span>
                   <button
                     onClick={() => changeMonth(1)}
-                    className={`p-1.5 hover:${colors.sidebarItemBgHover} rounded-lg transition-all ${colors.textPrimary} font-bold text-lg`}
+                    className={`p-1.5 hover:${colors.cardBgHover} rounded-md transition-all ${colors.textPrimary} font-bold text-lg`}
                   >
                     →
                   </button>
@@ -351,8 +436,8 @@ export default function OrgAnnouncementForm({
                   {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
                     <div 
                       key={day} 
-                      className="text-center font-bold text-[10px] py-1"
-                      style={{ color: selectedColor }}
+                      className="text-center font-bold text-xs py-1.5"
+                      style={{ color: orgColor }}
                     >
                       {day}
                     </div>
@@ -374,11 +459,11 @@ export default function OrgAnnouncementForm({
                           aspect-square p-1 rounded-md text-xs font-semibold transition-all
                           ${!dayObj.isCurrentMonth ? `${colors.textMuted} opacity-30 cursor-default` : ''}
                           ${dayObj.isPast ? `${colors.textMuted} opacity-50 cursor-not-allowed line-through` : ''}
-                          ${dayObj.isCurrentMonth && !dayObj.isPast ? `${colors.textPrimary} hover:${colors.sidebarItemBgHover} cursor-pointer` : ''}
+                          ${dayObj.isCurrentMonth && !dayObj.isPast ? `${colors.textPrimary} hover:${colors.cardBgHover} cursor-pointer` : ''}
                         `}
                         style={isSelected ? {
-                          backgroundColor: selectedColor,
-                          border: '2px solid white',
+                          backgroundColor: orgColor,
+                          border: `2px solid ${colors.borderStrong}`,
                           fontWeight: 'bold',
                           color: 'white'
                         } : {}}
@@ -389,25 +474,22 @@ export default function OrgAnnouncementForm({
                   })}
                 </div>
 
-                <div className={`flex gap-1.5 mt-3 pt-3 border-t-2`} style={{ borderColor: `${selectedColor}40` }}>
+                <div className={`flex gap-1.5 mt-3 pt-3 border-t-2 ${colors.borderSubtle}`}>
                   <button
                     onClick={() => {
                       setExpirationDate('');
                       setShowCalendar(false);
                     }}
-                    className={`flex-1 px-3 py-1.5 ${colors.sidebarItemBg} hover:${colors.sidebarItemBgHover} rounded-lg ${colors.textPrimary} font-semibold transition-all text-xs`}
+                    className={`flex-1 px-3 py-1.5 bg-gradient-to-br ${colors.glassBg} hover:${colors.cardBgHover} rounded-md ${colors.textPrimary} text-xs font-semibold transition-all`}
                   >
                     Clear
                   </button>
                   <button
                     onClick={() => setShowCalendar(false)}
-                    className="flex-1 px-3 py-1.5 rounded-lg text-white font-semibold transition-all text-xs"
+                    className="flex-1 px-3 py-1.5 rounded-md text-white text-xs font-semibold transition-all hover:opacity-90"
                     style={{
-                      backgroundColor: selectedColor,
-                      opacity: 0.9
+                      backgroundColor: orgColor
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                    onMouseLeave={(e) => e.currentTarget.style.opacity = '0.9'}
                   >
                     Done
                   </button>
@@ -418,13 +500,13 @@ export default function OrgAnnouncementForm({
 
           {expirationDate && (
             <div 
-              className="mt-2 p-2 border-2 rounded-lg"
+              className={`mt-2 p-2 border-2 rounded-md`}
               style={{ 
-                backgroundColor: `${selectedColor}10`,
-                borderColor: `${selectedColor}60`
+                backgroundColor: `${orgColor}${theme === 'dark' ? '20' : '15'}`,
+                borderColor: `${orgColor}${theme === 'dark' ? '60' : '80'}`
               }}
             >
-              <p className="text-xs font-semibold" style={{ color: selectedColor }}>
+              <p className={`text-xs font-semibold ${iconColor}`}>
                 ⏰ Expires at 5:00 PM on {new Date(expirationDate + 'T00:00:00').toLocaleDateString('en-US', { 
                   weekday: 'long', 
                   year: 'numeric', 
@@ -440,20 +522,18 @@ export default function OrgAnnouncementForm({
         <div className="flex gap-2 pt-1.5">
           <button
             onClick={handlePost}
-            className="flex-1 px-4 py-2 rounded-lg text-white font-bold transition-all border-2 text-sm"
+            disabled={uploadingFiles}
+            className={`flex-1 px-4 py-2 rounded-lg text-white text-sm font-bold transition-all hover:opacity-90 border-2 ${uploadingFiles ? 'opacity-50 cursor-not-allowed' : ''}`}
             style={{
-              backgroundColor: selectedColor,
-              borderColor: selectedColor,
-              opacity: 0.9
+              backgroundColor: orgColor,
+              borderColor: orgColor
             }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '0.9'}
           >
-            Post Announcement
+            {uploadingFiles ? 'Processing Files...' : 'Post Announcement'}
           </button>
           <button
             onClick={onCancel}
-            className={`px-4 py-2 ${colors.sidebarItemBg} hover:${colors.sidebarItemBgHover} rounded-lg ${colors.textPrimary} font-bold transition-all text-sm`}
+            className={`px-4 py-2 bg-gradient-to-br ${colors.glassBg} hover:${colors.cardBgHover} rounded-lg ${colors.textPrimary} text-sm font-bold transition-all border ${colors.border}`}
           >
             Cancel
           </button>

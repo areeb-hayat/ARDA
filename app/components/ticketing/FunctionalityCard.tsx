@@ -1,10 +1,10 @@
 // ============================================
 // app/components/ticketing/FunctionalityCard.tsx
-// Card displaying functionality info for ticket creation
+// Card component for displaying functionalities (including super workflows)
 // ============================================
 
 import React from 'react';
-import { Workflow, ChevronRight, FileText } from 'lucide-react';
+import { FileText, Calendar, Zap } from 'lucide-react';
 import { useTheme } from '@/app/context/ThemeContext';
 
 interface Functionality {
@@ -16,97 +16,85 @@ interface Functionality {
     fields: any[];
     useDefaultFields: boolean;
   };
+  createdAt: string;
 }
 
 interface Props {
   functionality: Functionality;
   onClick: () => void;
+  isSuper?: boolean;
 }
 
-export default function FunctionalityCard({ functionality, onClick }: Props) {
+export default function FunctionalityCard({ functionality, onClick, isSuper = false }: Props) {
   const { colors, cardCharacters } = useTheme();
-  
-  // Map departments to card characters
-  const getDepartmentCharacter = (dept: string) => {
-    switch (dept) {
-      case 'IT':
-        return cardCharacters.informative;
-      case 'HR':
-        return cardCharacters.urgent;
-      case 'Finance':
-        return cardCharacters.interactive;
-      case 'Operations':
-        return cardCharacters.completed;
-      case 'Marketing':
-        return cardCharacters.creative;
-      default:
-        return cardCharacters.neutral;
-    }
+  const charColors = cardCharacters.informative;
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
   };
 
-  const charColors = getDepartmentCharacter(functionality.department);
-  const fieldCount = functionality.formSchema?.fields?.length || 0;
-
   return (
-    <div
+    <button
       onClick={onClick}
-      className={`group relative overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${charColors.bg} ${charColors.border} ${colors.shadowCard} hover:${colors.shadowHover} transition-all duration-300 hover:scale-[1.02] cursor-pointer`}
+      className={`group relative w-full text-left transition-all duration-300 hover:scale-[1.02] overflow-hidden rounded-2xl border-2 backdrop-blur-sm bg-gradient-to-br ${charColors.bg} ${charColors.border} ${colors.shadowCard} hover:${colors.shadowHover}`}
     >
-      {/* Paper Texture */}
       <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
       
-      {/* Internal Glow on Hover */}
       <div 
         className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-        style={{ boxShadow: `inset 0 0 20px ${colors.glowPrimary}` }}
+        style={{ boxShadow: `inset 0 0 30px ${colors.glowPrimary}` }}
       ></div>
 
       <div className="relative p-6 space-y-4">
         {/* Header */}
         <div className="flex items-start justify-between">
-          <div 
-            className={`p-3 rounded-xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 bg-gradient-to-r ${charColors.bg}`}
-          >
-            <Workflow className={`w-7 h-7 transition-transform duration-500 group-hover:rotate-12 ${charColors.iconColor}`} />
+          <div className={`flex-shrink-0 p-3 rounded-xl transition-transform duration-300 group-hover:scale-110 bg-gradient-to-r ${charColors.bg} border-2 ${charColors.border}`}>
+            {isSuper ? (
+              <Zap className={`w-6 h-6 ${charColors.iconColor}`} />
+            ) : (
+              <FileText className={`w-6 h-6 ${charColors.iconColor}`} />
+            )}
           </div>
-          
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-300 group-hover:translate-x-1 bg-gradient-to-r ${charColors.bg}`}>
-            <span className={`text-xs font-bold ${charColors.accent}`}>
-              View Details
-            </span>
-            <ChevronRight 
-              className={`w-4 h-4 transition-transform duration-300 group-hover:translate-x-1 ${charColors.iconColor}`}
-            />
+        </div>
+        
+        {/* Title and Description */}
+        <div>
+          <h3 className={`text-xl font-black ${charColors.text} mb-1 line-clamp-2`}>
+            {functionality.name}
+          </h3>
+          {functionality.description && (
+            <p className={`${colors.textSecondary} text-sm line-clamp-2`}>
+              {functionality.description}
+            </p>
+          )}
+        </div>
+
+        {/* Department Badge */}
+        <div className="flex flex-wrap gap-2">
+          <div className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 ${colors.inputBg} ${colors.textSecondary} border ${colors.inputBorder}`}>
+            {isSuper && <Zap className="w-3 h-3" />}
+            {isSuper ? 'Super Workflow' : functionality.department}
           </div>
         </div>
 
-        {/* Content */}
-        <h3 className={`text-xl font-black ${charColors.text} line-clamp-2 group-hover:${charColors.accent} transition-colors duration-300`}>
-          {functionality.name}
-        </h3>
-        
-        <p className={`text-sm ${colors.textSecondary} line-clamp-3 min-h-[3.5rem] leading-relaxed`}>
-          {functionality.description || 'No description provided'}
-        </p>
-
         {/* Footer */}
-        <div className={`flex items-center justify-between pt-4 border-t ${charColors.border} transition-colors duration-300`}>
+        <div className={`pt-3 border-t border-current/10 flex items-center justify-between`}>
           <div className="flex items-center gap-2">
-            <div 
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 group-hover:scale-105 bg-gradient-to-r ${charColors.bg} ${charColors.text}`}
-            >
-              {functionality.department}
-            </div>
+            <Calendar className={`w-4 h-4 ${colors.textMuted}`} />
+            <span className={`text-xs font-medium ${colors.textMuted}`}>
+              {formatDate(functionality.createdAt)}
+            </span>
           </div>
           
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-300 ${colors.inputBg} ${colors.inputBorder} border`}>
-            <FileText className={`w-3.5 h-3.5 ${colors.textMuted}`} />
-            <span className={`text-xs font-semibold ${colors.textSecondary}`}>
-              {fieldCount} field{fieldCount !== 1 ? 's' : ''}
-            </span>
+          <div className={`text-xs font-bold ${charColors.text} group-hover:translate-x-1 transition-transform`}>
+            Create Ticket →
           </div>
         </div>
       </div>
-    </div>
+    </button>
   );
 }

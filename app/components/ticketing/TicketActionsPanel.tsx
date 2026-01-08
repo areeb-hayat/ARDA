@@ -1,7 +1,7 @@
 // ============================================
 // app/components/ticketing/TicketActionsPanel.tsx
 // Main panel with tabs - Details first, then Actions
-// UPDATED WITH THEME CONTEXT MODAL STYLES
+// UPDATED WITH SUPER WORKFLOW SUPPORT
 // ============================================
 
 'use client';
@@ -21,6 +21,7 @@ interface Ticket {
   currentAssignee: string;
   currentAssignees: string[];
   groupLead: string | null;
+  department: string;
   functionality: any;
   raisedBy: {
     name: string;
@@ -50,7 +51,7 @@ interface WorkflowPosition {
 }
 
 export default function TicketActionsPanel({ ticket, userId, userName, onClose, onUpdate }: Props) {
-  const { colors, cardCharacters, getModalStyles } = useTheme();
+  const { colors, cardCharacters, getModalStyles, showToast } = useTheme();
   const charColors = cardCharacters.informative;
   
   const [activeTab, setActiveTab] = useState<'details' | 'actions'>('details');
@@ -87,11 +88,39 @@ export default function TicketActionsPanel({ ticket, userId, userName, onClose, 
   };
 
   const analyzeWorkflowPosition = () => {
-    if (!ticket.functionality?.workflow) return;
+    console.log('🔍 Analyzing workflow position for ticket:', {
+      ticketNumber: ticket.ticketNumber,
+      ticketId: ticket._id,
+      department: ticket.department,
+      currentStage: ticket.workflowStage,
+      hasFunctionality: !!ticket.functionality,
+      functionalityKeys: ticket.functionality ? Object.keys(ticket.functionality) : [],
+      hasWorkflow: !!ticket.functionality?.workflow,
+      workflowKeys: ticket.functionality?.workflow ? Object.keys(ticket.functionality.workflow) : [],
+      workflowNodes: ticket.functionality?.workflow?.nodes?.length,
+      workflowEdges: ticket.functionality?.workflow?.edges?.length
+    });
+
+    if (!ticket.functionality) {
+      console.error('❌ No functionality object in ticket!');
+      return;
+    }
+
+    if (!ticket.functionality.workflow) {
+      console.error('❌ No workflow in functionality object!');
+      console.log('Functionality object:', ticket.functionality);
+      return;
+    }
 
     const workflow = ticket.functionality.workflow;
     const currentNodeIndex = workflow.nodes.findIndex((n: any) => n.id === ticket.workflowStage);
     const currentNode = workflow.nodes[currentNodeIndex];
+
+    console.log('📍 Current node:', {
+      index: currentNodeIndex,
+      node: currentNode,
+      type: currentNode?.type
+    });
 
     const employeeNodes = workflow.nodes.filter((n: any) => n.type === 'employee');
     const firstEmployeeNode = employeeNodes[0];
@@ -100,12 +129,17 @@ export default function TicketActionsPanel({ ticket, userId, userName, onClose, 
     const isFirst = currentNode?.id === firstEmployeeNode?.id;
     const isLast = currentNode?.id === lastEmployeeNode?.id;
 
+    console.log('🎯 Position:', { isFirst, isLast });
+
     const nextEdge = workflow.edges.find((e: any) => e.source === ticket.workflowStage);
     let nextNode = null;
     let nextNodeType = null;
     if (nextEdge) {
       nextNode = workflow.nodes.find((n: any) => n.id === nextEdge.target);
       nextNodeType = nextNode?.type || null;
+      console.log('➡️ Next node:', { edge: nextEdge, node: nextNode, type: nextNodeType });
+    } else {
+      console.log('⚠️ No next edge found');
     }
 
     const prevEdge = workflow.edges.find((e: any) => e.target === ticket.workflowStage);
@@ -114,10 +148,18 @@ export default function TicketActionsPanel({ ticket, userId, userName, onClose, 
     if (prevEdge) {
       prevNode = workflow.nodes.find((n: any) => n.id === prevEdge.source);
       prevNodeType = prevNode?.type || null;
+      console.log('⬅️ Previous node:', { edge: prevEdge, node: prevNode, type: prevNodeType });
     }
 
-    const canForward = !!nextEdge && nextNode;
-    const canRevert = !!prevEdge && prevNode && prevNode.type !== 'start';
+    const canForward = !!nextEdge && !!nextNode;
+    const canRevert = !!prevEdge && !!prevNode && prevNode.type !== 'start';
+
+    console.log('✅ Final position:', {
+      canForward,
+      canRevert,
+      nextNodeType,
+      prevNodeType
+    });
 
     setWorkflowPosition({
       isFirst,
@@ -133,6 +175,9 @@ export default function TicketActionsPanel({ ticket, userId, userName, onClose, 
     try {
       setLoading(true);
 
+      console.log('🎬 Performing action:', action);
+      console.log('📦 Payload:', payload);
+
       const response = await fetch(`/api/tickets/${ticket._id}/actions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -145,11 +190,11 @@ export default function TicketActionsPanel({ ticket, userId, userName, onClose, 
         throw new Error(data.error || 'Action failed');
       }
 
-      alert('✅ Action performed successfully!');
+      showToast('Action performed successfully!', 'success');
       onUpdate();
     } catch (error) {
       console.error('Error performing action:', error);
-      alert(error instanceof Error ? error.message : 'Failed to perform action');
+      showToast(error instanceof Error ? error.message : 'Failed to perform action', 'error');
       throw error;
     } finally {
       setLoading(false);

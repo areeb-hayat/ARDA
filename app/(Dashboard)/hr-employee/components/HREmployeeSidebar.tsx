@@ -16,7 +16,8 @@ import {
   Download,
   Calendar,
   TicketIcon,
-  ListChecks
+  ListChecks,
+  Megaphone
 } from 'lucide-react';
 import Image from 'next/image';
 import { useTheme } from '@/app/context/ThemeContext';
@@ -47,113 +48,140 @@ export default function HREmployeeSidebar({ activeItem, onItemClick, isOpen, onC
   };
 
   const sidebarItems: SidebarItem[] = [
-    {
-      id: 'home',
-      label: 'Home',
-      icon: <Home className="h-3.5 w-3.5" />,
-      color: theme === 'dark' ? '#64B5F6' : '#2196F3',
-      visible: true
-    },
-    {
-      id: 'tickets',
-      label: 'Create Ticket',
-      icon: <TicketIcon className="h-3.5 w-3.5" />,
-      color: theme === 'dark' ? '#64B5F6' : '#2196F3',
-      visible: true
-    },
-    {
-      id: 'assigned-tickets',
-      label: 'Assigned Tickets',
-      icon: <FileText className="h-3.5 w-3.5" />,
-      color: theme === 'dark' ? '#64B5F6' : '#2196F3',
-      visible: true
-    },
-    {
-      id: 'policies',
-      label: 'Policies',
-      icon: <FileText className="h-3.5 w-3.5" />,
-      color: theme === 'dark' ? '#64B5F6' : '#2196F3',
-      visible: true
-    },
-    {
-      id: 'org-info',
-      label: 'Org Info',
-      icon: <Building2 className="h-3.5 w-3.5" />,
-      color: theme === 'dark' ? '#64B5F6' : '#2196F3',
-      visible: true
-    },
-    {
-      id: 'projects',
-      label: 'My Work',
-      icon: <ListChecks className="h-3.5 w-3.5" />,
-      color: theme === 'dark' ? '#64B5F6' : '#2196F3',
-      visible: true
-    },
-    {
-      id: 'manage-users',
-      label: 'Manage Users',
-      icon: <Users className="h-3.5 w-3.5" />,
-      color: theme === 'dark' ? '#64B5F6' : '#2196F3',
-      visible: true
-    },
-    {
-      id: 'timetrax',
-      label: 'TimeTrax',
-      icon: <Clock className="h-3.5 w-3.5" />,
-      color: theme === 'dark' ? '#64B5F6' : '#2196F3',
-      visible: true,
-      isExternal: true,
-      externalUrl: 'http://192.168.9.20:90/Login.aspx'
-    },
-    {
-      id: 'qliksense',
-      label: 'QlikSense',
-      icon: <BarChart3 className="h-3.5 w-3.5" />,
-      color: theme === 'dark' ? '#64B5F6' : '#2196F3',
-      visible: true,
-      isExternal: true,
-      externalUrl: 'https://qlik.pepsiisb.com:9443'
-    },
-    {
-      id: 'theia',
-      label: 'Theia',
-      icon: <Activity className="h-3.5 w-3.5" />,
-      color: theme === 'dark' ? '#64B5F6' : '#2196F3',
-      visible: true,
-      isExternal: true,
-      externalUrl: 'https://theia.pepsiisb.com/portal/'
-    },
-    {
-      id: 'ats',
-      label: 'ATS',
-      icon: <UserCheck className="h-3.5 w-3.5" />,
-      color: theme === 'dark' ? '#64B5F6' : '#2196F3',
-      visible: true,
-      isExternal: true,
-      externalUrl: 'https://google.com'
-    },
-    {
-      id: 'download-logs',
-      label: 'View Logs',
-      icon: <Download className="h-3.5 w-3.5" />,
-      color: theme === 'dark' ? '#64B5F6' : '#2196F3',
-      visible: true
-    },
-    {
-      id: 'calendar',
-      label: 'Calendar',
-      icon: <Calendar className="h-3.5 w-3.5" />,
-      color: theme === 'dark' ? '#64B5F6' : '#2196F3',
-      visible: true
-    },
-    {
-      id: 'appointments',
-      label: 'Appointments',
-      icon: <Users className="h-3.5 w-3.5" />,
-      color: theme === 'dark' ? '#64B5F6' : '#2196F3',
-      visible: true
-    },
-  ];
+  {
+    id: 'home',
+    label: 'Home',
+    icon: <Home className="h-3.5 w-3.5" />,
+    color: theme === 'dark' ? '#64B5F6' : '#2196F3',
+    visible: true
+  },
+  
+  // Broadcast
+  {
+    id: 'announcements',
+    label: 'Announcements',
+    icon: <Megaphone className="h-3.5 w-3.5" />,
+    color: theme === 'dark' ? '#64B5F6' : '#2196F3',
+    visible: true
+  },
+  {
+    id: 'org-announcements',
+    label: 'Org Announcements',
+    icon: <Megaphone className="h-3.5 w-3.5" />,
+    color: theme === 'dark' ? '#64B5F6' : '#2196F3',
+    visible: true
+  },
+
+  // Operations
+  {
+    id: 'projects',
+    label: 'My Work',
+    icon: <ListChecks className="h-3.5 w-3.5" />,
+    color: theme === 'dark' ? '#64B5F6' : '#2196F3',
+    visible: true
+  },
+  {
+    id: 'assigned-tickets',
+    label: 'Assigned Tickets',
+    icon: <FileText className="h-3.5 w-3.5" />,
+    color: theme === 'dark' ? '#64B5F6' : '#2196F3',
+    visible: true
+  },
+  {
+    id: 'tickets',
+    label: 'Create Ticket',
+    icon: <TicketIcon className="h-3.5 w-3.5" />,
+    color: theme === 'dark' ? '#64B5F6' : '#2196F3',
+    visible: true
+  },
+
+  // People & control
+  {
+    id: 'manage-users',
+    label: 'Manage Users',
+    icon: <Users className="h-3.5 w-3.5" />,
+    color: theme === 'dark' ? '#64B5F6' : '#2196F3',
+    visible: true
+  },
+  {
+    id: 'download-logs',
+    label: 'View Logs',
+    icon: <Download className="h-3.5 w-3.5" />,
+    color: theme === 'dark' ? '#64B5F6' : '#2196F3',
+    visible: false
+  },
+
+  // Planning
+  {
+    id: 'calendar',
+    label: 'Calendar',
+    icon: <Calendar className="h-3.5 w-3.5" />,
+    color: theme === 'dark' ? '#64B5F6' : '#2196F3',
+    visible: true
+  },
+  {
+    id: 'appointments',
+    label: 'Appointments',
+    icon: <Users className="h-3.5 w-3.5" />,
+    color: theme === 'dark' ? '#64B5F6' : '#2196F3',
+    visible: true
+  },
+
+  // Reference
+  {
+    id: 'policies',
+    label: 'Policies',
+    icon: <FileText className="h-3.5 w-3.5" />,
+    color: theme === 'dark' ? '#64B5F6' : '#2196F3',
+    visible: true
+  },
+  {
+    id: 'org-info',
+    label: 'Org Info',
+    icon: <Building2 className="h-3.5 w-3.5" />,
+    color: theme === 'dark' ? '#64B5F6' : '#2196F3',
+    visible: true
+  },
+
+  // External systems
+  {
+    id: 'timetrax',
+    label: 'TimeTrax',
+    icon: <Clock className="h-3.5 w-3.5" />,
+    color: theme === 'dark' ? '#64B5F6' : '#2196F3',
+    visible: true,
+    isExternal: true,
+    externalUrl: 'http://192.168.9.20:90/Login.aspx'
+  },
+  {
+    id: 'ats',
+    label: 'ATS',
+    icon: <UserCheck className="h-3.5 w-3.5" />,
+    color: theme === 'dark' ? '#64B5F6' : '#2196F3',
+    visible: false,
+    isExternal: true,
+    externalUrl: 'https://google.com'
+  },
+  {
+    id: 'qliksense',
+    label: 'QlikSense',
+    icon: <BarChart3 className="h-3.5 w-3.5" />,
+    color: theme === 'dark' ? '#64B5F6' : '#2196F3',
+    visible: true,
+    isExternal: true,
+    externalUrl: 'https://qlik.pepsiisb.com:9443'
+  },
+  {
+    id: 'theia',
+    label: 'Theia',
+    icon: <Activity className="h-3.5 w-3.5" />,
+    color: theme === 'dark' ? '#64B5F6' : '#2196F3',
+    visible: true,
+    isExternal: true,
+    externalUrl: 'https://theia.pepsiisb.com/portal/'
+  }
+];
+
 
   const handleItemClick = (item: SidebarItem) => {
     if (item.isExternal && item.externalUrl) {

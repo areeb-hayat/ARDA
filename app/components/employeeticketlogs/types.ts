@@ -1,5 +1,4 @@
 // app/components/employeeticketlogs/types.ts
-// UPDATED: Added primary/secondary ticket breakdown
 
 // Status type alias matching database values
 export type TicketStatusType = 'pending' | 'in-progress' | 'blocked' | 'resolved' | 'closed';
@@ -7,10 +6,10 @@ export type TicketStatusType = 'pending' | 'in-progress' | 'blocked' | 'resolved
 // Status colors mapping
 export const STATUS_COLORS: Record<TicketStatusType, string> = {
   'pending': '#FFA500',      // Orange
-  'in-progress': '#0000FF',  // Blue
-  'blocked': '#FF0000',      // Red
-  'resolved': '#32CD32',     // Green
-  'closed': '#808080',       // Gray
+  'in-progress': '#2196F3',  // Blue
+  'blocked': '#F44336',      // Red
+  'resolved': '#4CAF50',     // Green
+  'closed': '#757575',       // Gray
 };
 
 // Status labels mapping
@@ -25,7 +24,7 @@ export const STATUS_LABELS: Record<TicketStatusType, string> = {
 export interface TicketStatus {
   status: string;
   count: number;
-  color: string;
+  color?: string;
   percentage: number;
 }
 
@@ -39,7 +38,7 @@ export interface RecentTicket {
   priority: string;
   createdAt: string;
   role: 'assignee' | 'group_lead' | 'group_member';
-  contributorType?: 'primary' | 'secondary'; // NEW
+  contributorType?: 'primary' | 'secondary';
 }
 
 export interface TicketCollection {
@@ -52,7 +51,7 @@ export interface TicketAnalytics {
   employeeId: string;
   totalTickets: number;
   
-  // NEW: Separate primary and secondary ticket data
+  // Separate primary and secondary ticket data
   primaryTickets: TicketCollection;
   secondaryTickets: TicketCollection;
   

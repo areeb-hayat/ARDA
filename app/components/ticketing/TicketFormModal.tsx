@@ -1,7 +1,7 @@
 // ============================================
 // app/components/ticketing/TicketFormModal.tsx
 // Modal for creating tickets with dynamic form
-// UPDATED WITH THEME CONTEXT MODAL STYLES
+// UPDATED WITH THEME CONTEXT MODAL STYLES + SUPER WORKFLOW SUPPORT
 // ============================================
 
 import React, { useState, useEffect } from 'react';
@@ -29,6 +29,20 @@ interface Props {
 export default function TicketFormModal({ functionality, onClose, onSuccess }: Props) {
   const { colors, cardCharacters, getModalStyles } = useTheme();
   const charColors = cardCharacters.informative;
+  
+  // 🌟 DETECT IF THIS IS A SUPER FUNCTIONALITY
+  const isSuper = functionality.department === 'Super Workflow';
+  
+  // Debug logging to verify detection
+  useEffect(() => {
+    console.log('🎫 TicketFormModal opened:', {
+      functionalityId: functionality._id,
+      name: functionality.name,
+      department: functionality.department,
+      isSuper,
+      departmentMatch: functionality.department === 'Super Workflow'
+    });
+  }, [functionality, isSuper]);
   
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -122,6 +136,8 @@ export default function TicketFormModal({ functionality, onClose, onSuccess }: P
       
       // ====== COMPREHENSIVE DEBUG LOGGING ======
       console.log('🔍 ====== FORM SUBMISSION DEBUG ======');
+      console.log('🌟 Is Super Functionality?:', isSuper);
+      console.log('📋 Functionality Department:', functionality.department);
       console.log('📋 All form fields:', Object.keys(preparedFormData));
       console.log('📋 Full formData:', preparedFormData);
       
@@ -151,12 +167,14 @@ export default function TicketFormModal({ functionality, onClose, onSuccess }: P
 
       const requestBody = {
         functionalityId: functionality._id,
+        isSuper, // 🌟 PASS THE isSuper FLAG TO BACKEND
         formData: preparedFormData,
         raisedBy: raisedByData
       };
 
       console.log('🚀 Sending request with body:', {
         functionalityId: requestBody.functionalityId,
+        isSuper: requestBody.isSuper,
         formDataKeys: Object.keys(requestBody.formData),
         attachments: requestBody.formData['default-attachments']
       });
@@ -278,7 +296,11 @@ export default function TicketFormModal({ functionality, onClose, onSuccess }: P
                 Create New Ticket
               </h2>
               <p className={`text-sm ${colors.textSecondary} flex items-center gap-2 flex-wrap`}>
-                <span className={`px-3 py-1 rounded-lg text-xs font-bold bg-gradient-to-r ${charColors.bg} ${charColors.text}`}>
+                <span className={`px-3 py-1 rounded-lg text-xs font-bold ${
+                  isSuper 
+                    ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400 border border-purple-500/30'
+                    : `bg-gradient-to-r ${charColors.bg} ${charColors.text}`
+                }`}>
                   {functionality.department}
                 </span>
                 <span>•</span>
@@ -350,12 +372,20 @@ export default function TicketFormModal({ functionality, onClose, onSuccess }: P
             type="button"
             onClick={handleSubmit}
             disabled={submitting}
-            className={`group relative px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden border-2 bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText}`}
+            className={`group relative px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden border-2 ${
+              isSuper 
+                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white border-purple-500'
+                : `bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText}`
+            }`}
           >
             <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
             <div 
               className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-              style={{ boxShadow: `inset 0 0 30px ${colors.glowPrimary}` }}
+              style={{ 
+                boxShadow: isSuper 
+                  ? 'inset 0 0 30px rgba(147, 51, 234, 0.3)'
+                  : `inset 0 0 30px ${colors.glowPrimary}` 
+              }}
             ></div>
             {submitting ? (
               <>

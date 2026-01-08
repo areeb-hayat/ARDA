@@ -1,6 +1,6 @@
 // ============================================
 // app/components/ticketing/TicketActionsList.tsx
-// UPDATED WITH THEME CONTEXT COLORS
+// UPDATED: Allow group formation for in-progress tickets, use theme toast
 // ============================================
 
 'use client';
@@ -50,7 +50,7 @@ export default function TicketActionsList({
   onActionPerform,
   loading 
 }: Props) {
-  const { colors, cardCharacters } = useTheme();
+  const { colors, cardCharacters, showToast } = useTheme();
   const charColors = cardCharacters.informative;
   
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
@@ -97,7 +97,7 @@ export default function TicketActionsList({
       setEmployees(availableEmployees);
     } catch (error) {
       console.error('Error fetching employees:', error);
-      alert('Failed to load employees. Please try again.');
+      showToast('Failed to load employees. Please try again.', 'error');
     } finally {
       setLoadingEmployees(false);
     }
@@ -114,12 +114,12 @@ export default function TicketActionsList({
     if (!selectedAction) return;
 
     if (selectedAction === 'report_blocker' && !blockerDescription) {
-      alert('Please describe the blocker');
+      showToast('Please describe the blocker', 'warning');
       return;
     }
 
     if (['reassign', 'form_group'].includes(selectedAction) && selectedEmployees.length === 0) {
-      alert('Please select at least one employee');
+      showToast('Please select at least one employee', 'warning');
       return;
     }
 
@@ -134,7 +134,7 @@ export default function TicketActionsList({
     if (selectedAction === 'forward') {
       const nextNode = getNextNode();
       if (!nextNode) {
-        alert('Cannot determine next node in workflow');
+        showToast('Cannot determine next node in workflow', 'error');
         return;
       }
       payload.toNode = nextNode.id;
@@ -206,6 +206,11 @@ export default function TicketActionsList({
       
       if (!isGroupMember || isGroupLead) {
         actions.push('reassign');
+      }
+      
+      // 🆕 Allow group formation for in-progress tickets (if not already in a group)
+      if (!isGroupMember) {
+        actions.push('form_group');
       }
       
       actions.push('report_blocker');

@@ -38,6 +38,7 @@ export default function NewAnnouncementForm({
   const { colors, theme, cardCharacters } = useTheme();
   const [showCalendar, setShowCalendar] = useState(false);
   const [errors, setErrors] = useState({ title: false, content: false });
+  const [uploadingFiles, setUploadingFiles] = useState(false);
 
   // Theme-aware color options using card characters
   const colorOptions = [
@@ -67,26 +68,50 @@ export default function NewAnnouncementForm({
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
+    if (!files || files.length === 0) return;
 
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const newAttachment: Attachment = {
+    setUploadingFiles(true);
+
+    const newAttachments: Attachment[] = [];
+
+    for (const file of Array.from(files)) {
+      try {
+        // Validate file size (max 10MB)
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        if (file.size > maxSize) {
+          alert(`File ${file.name} is too large. Maximum size is 10MB.`);
+          continue;
+        }
+
+        // Read file as base64
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        // Determine file type
+        const isImage = file.type.startsWith('image/');
+        
+        newAttachments.push({
           name: file.name,
-          url: event.target?.result as string,
-          type: file.type.startsWith('image/') ? 'image' : 'document',
+          url: base64, // Store base64 temporarily, will be saved to disk on submit
+          type: isImage ? 'image' : 'document',
           size: file.size,
           uploadedAt: new Date().toISOString()
-        };
-        setAttachments([...attachments, newAttachment]);
-      };
-      reader.readAsDataURL(file);
-    });
+        });
+      } catch (error) {
+        console.error(`Error processing file ${file.name}:`, error);
+        alert(`Failed to process file: ${file.name}`);
+      }
+    }
 
-    e.target.value = '';
+    setAttachments([...attachments, ...newAttachments]);
+    setUploadingFiles(false);
+    e.target.value = ''; // Reset input
   };
 
   const removeAttachment = (index: number) => {
@@ -248,14 +273,15 @@ export default function NewAnnouncementForm({
 
         {/* Attachments */}
         <div>
-          <label className={`flex items-center gap-1.5 px-3 py-2 ${colors.inputBg} hover:${colors.inputFocusBg} border-2 ${colors.inputBorder} hover:${colors.borderStrong} rounded-lg ${colors.textPrimary} text-sm font-bold cursor-pointer transition-all w-fit`}>
+          <label className={`flex items-center gap-1.5 px-3 py-2 ${colors.inputBg} hover:${colors.inputFocusBg} border-2 ${colors.inputBorder} hover:${colors.borderStrong} rounded-lg ${colors.textPrimary} text-sm font-bold cursor-pointer transition-all w-fit ${uploadingFiles ? 'opacity-50 cursor-wait' : ''}`}>
             <Paperclip className="h-3.5 w-3.5" />
-            Add Attachments
+            {uploadingFiles ? 'Uploading...' : 'Add Attachments'}
             <input
               type="file"
               multiple
               accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
               onChange={handleFileUpload}
+              disabled={uploadingFiles}
               className="hidden"
             />
           </label>
@@ -471,13 +497,14 @@ export default function NewAnnouncementForm({
         <div className="flex gap-2 pt-1.5">
           <button
             onClick={handlePost}
-            className="flex-1 px-4 py-2 rounded-lg text-white text-sm font-bold transition-all hover:opacity-90 border-2"
+            disabled={uploadingFiles}
+            className={`flex-1 px-4 py-2 rounded-lg text-white text-sm font-bold transition-all hover:opacity-90 border-2 ${uploadingFiles ? 'opacity-50 cursor-not-allowed' : ''}`}
             style={{
               backgroundColor: selectedColor,
               borderColor: selectedColor
             }}
           >
-            Post Announcement
+            {uploadingFiles ? 'Processing Files...' : 'Post Announcement'}
           </button>
           <button
             onClick={onCancel}

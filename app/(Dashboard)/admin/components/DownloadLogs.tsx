@@ -2,12 +2,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FileText, Eye, Loader2 } from 'lucide-react';
-import LogSelector from './AdminDownloadLogs/LogSelector';
-import DownloadButton from './AdminDownloadLogs/DownloadButton';
-import LogViewer from './AdminDownloadLogs/LogViewer';
+import { FileText, Loader2 } from 'lucide-react';
+import { useTheme } from '@/app/context/ThemeContext';
+import LogSelector from '@/app/components/HRDownloadLogs/LogSelector';
+import DownloadButton from '@/app/components/HRDownloadLogs/DownloadButton';
+import LogViewer from '@/app/components/HRDownloadLogs/LogViewer';
 
 export default function DownloadLogs() {
+  const { colors, cardCharacters } = useTheme();
+  const charColors = cardCharacters.informative;
+  
   const [selectedType, setSelectedType] = useState<'org' | 'dept'>('org');
   const [departments, setDepartments] = useState<string[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState('');
@@ -16,8 +20,11 @@ export default function DownloadLogs() {
   const [status, setStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   
+  // Date range state
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  
   // Logs viewer state
-  const [viewingLogs, setViewingLogs] = useState(false);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [logs, setLogs] = useState<any[]>([]);
   const [logsError, setLogsError] = useState('');
@@ -57,24 +64,28 @@ export default function DownloadLogs() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: selectedType,
-          department: selectedType === 'dept' ? selectedDepartment : undefined
+          department: selectedType === 'dept' ? selectedDepartment : undefined,
+          startDate: startDate || undefined,
+          endDate: endDate || undefined
         })
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate logs');
+        throw new Error(errorData.error || 'Failed to generate PDF');
       }
 
-      // Get the blob and trigger download
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       
+      const dateRangeStr = startDate && endDate 
+        ? `_${startDate}_to_${endDate}`
+        : '';
       const filename = selectedType === 'org'
-        ? `Org_Announcements_Log_${new Date().toISOString().split('T')[0]}.txt`
-        : `${selectedDepartment}_Announcements_Log_${new Date().toISOString().split('T')[0]}.txt`;
+        ? `Org_Announcements_Log${dateRangeStr}_${new Date().toISOString().split('T')[0]}.pdf`
+        : `${selectedDepartment}_Announcements_Log${dateRangeStr}_${new Date().toISOString().split('T')[0]}.pdf`;
       
       a.download = filename;
       document.body.appendChild(a);
@@ -85,8 +96,8 @@ export default function DownloadLogs() {
       setStatus('success');
       setTimeout(() => setStatus('idle'), 3000);
     } catch (error) {
-      console.error('Error downloading logs:', error);
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to download logs. Please try again.');
+      console.error('Error downloading PDF:', error);
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to download PDF. Please try again.');
       setStatus('error');
       setTimeout(() => setStatus('idle'), 5000);
     } finally {
@@ -94,10 +105,9 @@ export default function DownloadLogs() {
     }
   };
 
-  const handleViewLogs = async () => {
+  const fetchLogs = async () => {
     setLoadingLogs(true);
     setLogsError('');
-    setViewingLogs(true);
 
     try {
       const response = await fetch('/api/view-logs', {
@@ -105,7 +115,9 @@ export default function DownloadLogs() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: selectedType,
-          department: selectedType === 'dept' ? selectedDepartment : undefined
+          department: selectedType === 'dept' ? selectedDepartment : undefined,
+          startDate: startDate || undefined,
+          endDate: endDate || undefined
         })
       });
 
@@ -124,34 +136,40 @@ export default function DownloadLogs() {
     }
   };
 
-  // Re-fetch logs when type or department changes
+  // Auto-fetch logs when filters change
   useEffect(() => {
-    if (viewingLogs) {
-      handleViewLogs();
+    if (selectedType === 'org' || (selectedType === 'dept' && selectedDepartment)) {
+      fetchLogs();
     }
-  }, [selectedType, selectedDepartment]);
+  }, [selectedType, selectedDepartment, startDate, endDate]);
 
   const isDisabled = selectedType === 'dept' && (loadingDepartments || departments.length === 0);
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <div className="p-4 bg-gradient-to-br from-[#0000FF]/20 to-[#6495ED]/20 rounded-2xl border-2 border-[#0000FF]/40">
-          <FileText className="h-8 w-8 text-[#87CEEB]" />
-        </div>
-        <div>
-          <h1 className="text-4xl font-black text-white">Download Logs</h1>
-          <p className="text-[#87CEEB] font-semibold mt-1">
-            Export and view comprehensive announcement logs with all comments and history
-          </p>
+    <div className="min-h-screen p-4 md:p-6 space-y-4">
+      {/* Header - Matching AssignedTickets Style */}
+      <div className={`relative overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${charColors.bg} ${charColors.border} ${colors.shadowCard} transition-all duration-300`}>
+        <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
+        
+        <div className="relative p-4">
+          <div className="flex items-center space-x-3">
+            <div className={`p-2 rounded-lg bg-gradient-to-r ${charColors.bg}`}>
+              <FileText className={`h-5 w-5 ${charColors.iconColor}`} />
+            </div>
+            <div>
+              <h1 className={`text-xl font-black ${charColors.text}`}>Download Logs</h1>
+              <p className={`text-xs ${colors.textMuted}`}>
+                Export announcement logs as PDF with full history
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Main Card */}
-      <div className="bg-gradient-to-br from-gray-900/60 to-black/60 backdrop-blur-xl rounded-2xl p-8 border-2 border-[#0000FF]/40">
-        <div className="space-y-6">
-          {/* Log Selector */}
+      {/* Control Panel */}
+      <div className={`relative overflow-hidden rounded-xl p-4 border-2 backdrop-blur-sm bg-gradient-to-br ${colors.cardBg} ${colors.borderStrong} ${colors.shadowCard}`}>
+        <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
+        <div className="relative space-y-4">
           <LogSelector
             selectedType={selectedType}
             onTypeChange={setSelectedType}
@@ -159,9 +177,13 @@ export default function DownloadLogs() {
             selectedDepartment={selectedDepartment}
             onDepartmentChange={setSelectedDepartment}
             loadingDepartments={loadingDepartments}
+            startDate={startDate}
+            endDate={endDate}
+            onStartDateChange={setStartDate}
+            onEndDateChange={setEndDate}
+            colors={colors}
           />
 
-          {/* Download Button */}
           <DownloadButton
             selectedType={selectedType}
             selectedDepartment={selectedDepartment}
@@ -171,69 +193,57 @@ export default function DownloadLogs() {
             onDownload={handleDownload}
             disabled={isDisabled}
           />
-
-          {/* View Logs Button */}
-          <button
-            onClick={handleViewLogs}
-            disabled={loadingLogs || isDisabled}
-            className={`w-full py-4 px-6 rounded-xl font-bold text-white transition-all duration-300 flex items-center justify-center gap-3 ${
-              loadingLogs || isDisabled
-                ? 'bg-gray-600 cursor-not-allowed'
-                : 'bg-gradient-to-r from-[#6495ED] to-[#87CEEB] hover:from-[#87CEEB] hover:to-[#6495ED] shadow-lg hover:shadow-xl transform hover:scale-105'
-            }`}
-          >
-            {loadingLogs ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                Loading Logs...
-              </>
-            ) : (
-              <>
-                <Eye className="h-5 w-5" />
-                View {selectedType === 'org' ? 'Organization' : 'Department'} Logs
-              </>
-            )}
-          </button>
         </div>
       </div>
 
       {/* Logs Viewer */}
-      {viewingLogs && (
-        <div className="space-y-4">
-          {loadingLogs ? (
-            <div className="bg-gradient-to-br from-gray-900/60 to-black/60 backdrop-blur-xl rounded-2xl p-8 border-2 border-[#0000FF]/40 flex items-center justify-center">
-              <div className="flex items-center gap-3">
-                <Loader2 className="h-6 w-6 text-[#87CEEB] animate-spin" />
-                <p className="text-[#87CEEB] font-semibold">Loading logs...</p>
-              </div>
+      <div className="space-y-4">
+        {loadingLogs ? (
+          <div className={`relative overflow-hidden rounded-xl p-8 border-2 backdrop-blur-sm bg-gradient-to-br ${colors.cardBg} ${colors.borderStrong} flex items-center justify-center ${colors.shadowCard}`}>
+            <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
+            <div className="relative flex items-center gap-3">
+              <Loader2 className={`h-6 w-6 ${charColors.iconColor} animate-spin`} />
+              <p className={`${charColors.text} font-semibold`}>Loading logs...</p>
             </div>
-          ) : logsError ? (
-            <div className="bg-gradient-to-br from-gray-900/60 to-black/60 backdrop-blur-xl rounded-2xl p-8 border-2 border-red-500/40">
-              <p className="text-red-400 font-semibold text-center">{logsError}</p>
-            </div>
-          ) : (
-            <LogViewer
-              announcements={logs}
-              type={selectedType}
-              department={selectedDepartment}
-            />
-          )}
-        </div>
-      )}
+          </div>
+        ) : logsError ? (
+          <div className={`relative overflow-hidden rounded-xl p-8 border-2 backdrop-blur-sm bg-gradient-to-br ${cardCharacters.urgent.bg} ${cardCharacters.urgent.border}`}>
+            <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
+            <p className={`relative ${cardCharacters.urgent.text} font-semibold text-center`}>{logsError}</p>
+          </div>
+        ) : (
+          <LogViewer
+            announcements={logs}
+            type={selectedType}
+            department={selectedDepartment}
+            startDate={startDate}
+            endDate={endDate}
+          />
+        )}
+      </div>
 
       {/* Information Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="p-6 bg-gradient-to-br from-gray-900/60 to-black/60 rounded-xl border-2 border-gray-700/40">
-          <h3 className="font-black text-white mb-2">Complete History</h3>
-          <p className="text-sm text-gray-400">All announcements from creation to present, including deleted items</p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className={`relative overflow-hidden p-4 rounded-xl border-2 backdrop-blur-sm bg-gradient-to-br ${cardCharacters.completed.bg} ${cardCharacters.completed.border}`}>
+          <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
+          <div className="relative">
+            <h3 className={`font-black ${cardCharacters.completed.text} mb-1 text-sm`}>Complete History</h3>
+            <p className={`text-xs ${colors.textMuted}`}>All announcements including deleted items</p>
+          </div>
         </div>
-        <div className="p-6 bg-gradient-to-br from-gray-900/60 to-black/60 rounded-xl border-2 border-gray-700/40">
-          <h3 className="font-black text-white mb-2">Full Comments</h3>
-          <p className="text-sm text-gray-400">Every comment with author, timestamp, and pinned status</p>
+        <div className={`relative overflow-hidden p-4 rounded-xl border-2 backdrop-blur-sm bg-gradient-to-br ${cardCharacters.informative.bg} ${cardCharacters.informative.border}`}>
+          <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
+          <div className="relative">
+            <h3 className={`font-black ${cardCharacters.informative.text} mb-1 text-sm`}>Full Comments & Files</h3>
+            <p className={`text-xs ${colors.textMuted}`}>Every comment and attachment with metadata</p>
+          </div>
         </div>
-        <div className="p-6 bg-gradient-to-br from-gray-900/60 to-black/60 rounded-xl border-2 border-gray-700/40">
-          <h3 className="font-black text-white mb-2">Audit Ready</h3>
-          <p className="text-sm text-gray-400">Professional format suitable for compliance and auditing</p>
+        <div className={`relative overflow-hidden p-4 rounded-xl border-2 backdrop-blur-sm bg-gradient-to-br ${cardCharacters.creative.bg} ${cardCharacters.creative.border}`}>
+          <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
+          <div className="relative">
+            <h3 className={`font-black ${cardCharacters.creative.text} mb-1 text-sm`}>Professional PDF</h3>
+            <p className={`text-xs ${colors.textMuted}`}>Audit-ready format with embedded images</p>
+          </div>
         </div>
       </div>
     </div>

@@ -76,12 +76,12 @@ export default function TeamMembersStrip({ department, onClick }: TeamMembersStr
 
       {/* Horizontal scrollable strip */}
       <div className="relative">
-        <div className="flex gap-3 overflow-x-auto pb-4">
+        <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-current/20">
           {employees.map((employee) => (
             <div
               key={employee._id}
               onClick={onClick}
-              className={`group flex-shrink-0 w-32 relative overflow-hidden bg-gradient-to-br ${colors.cardBg} rounded-lg p-3 border-2 ${colors.border} ${colors.borderHover} cursor-pointer transition-all duration-300 ${colors.shadowCard} hover:${colors.shadowHover} hover:scale-105`}
+              className={`group flex-shrink-0 w-32 relative overflow-hidden bg-gradient-to-br ${colors.cardBg} rounded-lg p-3 border-2 ${colors.border} ${colors.borderHover} cursor-pointer transition-all duration-300 ${colors.shadowCard} hover:${colors.shadowHover}`}
             >
               {/* Paper Texture */}
               <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
@@ -92,22 +92,38 @@ export default function TeamMembersStrip({ department, onClick }: TeamMembersStr
                 style={{ boxShadow: `inset 0 0 14px ${colors.glowPrimary}, inset 0 0 28px ${colors.glowPrimary}` }}
               ></div>
 
+              {/* Subtle shimmer effect on hover */}
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-700">
+                <div 
+                  className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"
+                  style={{
+                    background: `linear-gradient(90deg, transparent, ${colors.glowPrimary}40, transparent)`
+                  }}
+                />
+              </div>
+
               {/* Content */}
               <div className="relative z-10 flex flex-col items-center gap-2 text-center">
                 {/* Avatar - Icon only, no photos */}
-                <div className={`relative overflow-hidden w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br ${colors.glassBg} border-2 ${colors.borderStrong} transition-all duration-300 group-hover:rotate-6 ${colors.shadowCard}`}>
+                <div className={`relative overflow-hidden w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br ${colors.glassBg} border-2 ${colors.borderStrong} transition-all duration-300 group-hover:border-opacity-80 ${colors.shadowCard}`}>
                   {/* Avatar Paper Texture */}
                   <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
+                  
+                  {/* Icon glow on hover */}
+                  <div 
+                    className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                    style={{ boxShadow: `inset 0 0 10px ${colors.glowPrimary}` }}
+                  ></div>
                   
                   <User className={`relative z-10 h-6 w-6 ${colors.textAccent} transition-all duration-300 group-hover:scale-110`} />
                 </div>
 
-                {/* Name */}
-                <div className="w-full">
-                  <p className={`text-xs font-bold ${colors.textPrimary} truncate`}>
+                {/* Name with subtle slide up animation on hover */}
+                <div className="w-full transition-transform duration-300 group-hover:-translate-y-0.5">
+                  <p className={`text-xs font-bold ${colors.textPrimary} truncate transition-colors duration-300 group-hover:${colors.textAccent}`}>
                     {getDisplayName(employee)}
                   </p>
-                  <p className={`text-xs font-semibold ${colors.textMuted} truncate mt-0.5`}>
+                  <p className={`text-xs font-semibold ${colors.textMuted} truncate mt-0.5 transition-opacity duration-300 group-hover:opacity-80`}>
                     {employee.title || 'Team Member'}
                   </p>
                 </div>
@@ -119,7 +135,7 @@ export default function TeamMembersStrip({ department, onClick }: TeamMembersStr
             <div className={`flex items-center justify-center w-full h-24 ${colors.textMuted} text-sm font-semibold`}>
               No team members found
             </div>
-          )}
+            )}
         </div>
       </div>
     </div>

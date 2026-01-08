@@ -115,7 +115,7 @@ export default function DeptHeadDashboardPage() {
         );
       
       case 'org-announcements':
-        return <OrgAnnouncementsPage />;
+        return <OrgAnnouncementsPage onBack={() => setActiveSection('home')} isHREmployee={false} userDepartment={user.department}/>;
       
       case 'policies':
         return <PoliciesContent />;

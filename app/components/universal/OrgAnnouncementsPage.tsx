@@ -25,14 +25,16 @@ interface OrgAnnouncement {
   expirationDate?: string;
   borderColor?: string;
   attachments?: Attachment[];
+  targetAudience?: string;
 }
 
 interface OrgAnnouncementsPageProps {
   onBack?: () => void;
   isHREmployee?: boolean;
+  userDepartment?: string;
 }
 
-export default function OrgAnnouncementsPage({ onBack, isHREmployee = false }: OrgAnnouncementsPageProps) {
+export default function OrgAnnouncementsPage({ onBack, isHREmployee = false, userDepartment = '' }: OrgAnnouncementsPageProps) {
   const { theme, colors, showToast } = useTheme();
   
   // Use emerald/teal colors for org announcements
@@ -58,6 +60,7 @@ export default function OrgAnnouncementsPage({ onBack, isHREmployee = false }: O
   const [newContent, setNewContent] = useState('');
   const [expirationDate, setExpirationDate] = useState('');
   const [newAttachments, setNewAttachments] = useState<Attachment[]>([]);
+  const [targetAudience, setTargetAudience] = useState('organization');
   
   // Edit states
   const [editTitle, setEditTitle] = useState('');
@@ -91,7 +94,7 @@ export default function OrgAnnouncementsPage({ onBack, isHREmployee = false }: O
 
   const fetchAnnouncements = async () => {
     try {
-      const response = await fetch('/api/org-announcements');
+      const response = await fetch(`/api/org-announcements?department=${userDepartment}`);
       if (response.ok) {
         const data = await response.json();
         setAnnouncements(data.announcements || []);
@@ -118,7 +121,8 @@ export default function OrgAnnouncementsPage({ onBack, isHREmployee = false }: O
           content: newContent,
           author: userDisplayName,
           expirationDate: expirationDate || undefined,
-          attachments: newAttachments
+          attachments: newAttachments,
+          targetAudience: targetAudience
         })
       });
 
@@ -127,6 +131,7 @@ export default function OrgAnnouncementsPage({ onBack, isHREmployee = false }: O
         setNewContent('');
         setExpirationDate('');
         setNewAttachments([]);
+        setTargetAudience('organization');
         setShowNewAnnouncement(false);
         fetchAnnouncements();
         showToast('Organization announcement created successfully', 'success');
@@ -211,25 +216,43 @@ export default function OrgAnnouncementsPage({ onBack, isHREmployee = false }: O
     setEditAttachments([]);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const newAttachment: Attachment = {
+    const newAttachments: Attachment[] = [];
+
+    for (const file of Array.from(files)) {
+      try {
+        // Validate file size (max 10MB)
+        const maxSize = 10 * 1024 * 1024;
+        if (file.size > maxSize) {
+          alert(`File ${file.name} is too large. Maximum size is 10MB.`);
+          continue;
+        }
+
+        // Read file as base64
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        newAttachments.push({
           name: file.name,
-          url: event.target?.result as string,
+          url: base64,
           type: file.type.startsWith('image/') ? 'image' : 'document',
           size: file.size,
           uploadedAt: new Date().toISOString()
-        };
-        setEditAttachments([...editAttachments, newAttachment]);
-      };
-      reader.readAsDataURL(file);
-    });
+        });
+      } catch (error) {
+        console.error(`Error processing file ${file.name}:`, error);
+        alert(`Failed to process file: ${file.name}`);
+      }
+    }
 
+    setEditAttachments([...editAttachments, ...newAttachments]);
     e.target.value = '';
   };
 
@@ -423,12 +446,15 @@ export default function OrgAnnouncementsPage({ onBack, isHREmployee = false }: O
               setExpirationDate={setExpirationDate}
               attachments={newAttachments}
               setAttachments={setNewAttachments}
+              targetAudience={targetAudience}
+              setTargetAudience={setTargetAudience}
               onCancel={() => {
                 setShowNewAnnouncement(false);
                 setNewTitle('');
                 setNewContent('');
                 setExpirationDate('');
                 setNewAttachments([]);
+                setTargetAudience('organization');
               }}
               onPost={createAnnouncement}
             />
@@ -613,6 +639,21 @@ export default function OrgAnnouncementsPage({ onBack, isHREmployee = false }: O
                         )}
                       </div>
                       
+                      {announcement.targetAudience && announcement.targetAudience !== 'organization' && (
+                        <div className="mb-2">
+                          <span 
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold"
+                            style={{
+                              backgroundColor: `${orgColor}30`,
+                              color: orgColor,
+                              border: `1px solid ${orgColor}60`
+                            }}
+                          >
+                            {announcement.targetAudience} Department
+                          </span>
+                        </div>
+                      )}
+                      
                       <div className="relative mb-1.5">
                         <p className={`${textSecondaryColor} font-semibold leading-relaxed text-sm ${!isExpanded && isLongContent ? 'line-clamp-3' : 'whitespace-pre-wrap'}`}>
                           {announcement.content}
@@ -681,7 +722,7 @@ export default function OrgAnnouncementsPage({ onBack, isHREmployee = false }: O
                           }}
                         >
                           <p className="text-[10px] font-semibold" style={{ color: orgColor }}>
-                            ⏰ Expires at 5:00 PM on {new Date(announcement.expirationDate).toLocaleDateString('en-US', { 
+                            Expires at 5:00 PM on {new Date(announcement.expirationDate).toLocaleDateString('en-US', { 
                               month: 'short', 
                               day: 'numeric', 
                               year: 'numeric' 

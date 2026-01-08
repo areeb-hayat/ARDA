@@ -11,6 +11,8 @@ import MyTicketsDonut from './HomeContent/MyTicketsDonut';
 import MyProjectsSprintsWidget from './HomeContent/MyProjectsSprintsWidget';
 import TodaysEventsWidget from './HomeContent/TodaysEventsWidget';
 import UpcomingEventsWidget from './HomeContent/UpcomingEventsWidget';
+import MiniCalendarWidget from './HomeContent/MiniCalendarWidget';
+import DayCanvasWidget from './HomeContent/DayCanvasWidget';
 import LoadingState from './HomeContent/LoadingState';
 import Styles from './HomeContent/Styles';
 import { useTheme } from '@/app/context/ThemeContext';
@@ -129,9 +131,9 @@ export default function EmployeeHomeContent({ department, onSectionChange }: Emp
     <>
       {/* Dashboard Grid Layout */}
       <div className="space-y-6">
-        {/* Top Section - Announcements and Quick Actions/Today's Events */}
+        {/* Top Section - Announcements/Tickets and Calendar/Canvas/Quick Actions/Events */}
         <div className="grid grid-cols-12 gap-5">
-          {/* Left Column - Announcements (Reduced Width) */}
+          {/* Left Column - Announcements & My Tickets Donut */}
           <div className="col-span-12 lg:col-span-4 space-y-5">
             {/* Organization Announcements */}
             <div className={`relative overflow-hidden h-[320px] backdrop-blur-xl bg-gradient-to-br ${colors.cardBg} rounded-xl p-4 border-2 ${cardCharacters.authoritative.border} ${colors.shadowCard}`}>
@@ -139,9 +141,9 @@ export default function EmployeeHomeContent({ department, onSectionChange }: Emp
               <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
               
               <div className="relative h-full">
-                <OrgAnnouncementsWidget
-                  announcements={orgAnnouncements}
+                <OrgAnnouncementsWidget 
                   onAnnouncementClick={handleNavigateToOrgAnnouncements}
+                  userDepartment={department}
                 />
               </div>
             </div>
@@ -158,10 +160,43 @@ export default function EmployeeHomeContent({ department, onSectionChange }: Emp
                 />
               </div>
             </div>
+
+            {/* My Tickets Donut - Below Announcements */}
+            <div className={`relative overflow-hidden backdrop-blur-xl bg-gradient-to-br ${colors.cardBg} rounded-xl p-5 border-2 ${colors.borderStrong} ${colors.shadowCard}`}>
+              {/* Paper Texture */}
+              <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
+              
+              <div className="relative">
+                <MyTicketsDonut onClick={handleNavigateToAssignedTickets} />
+              </div>
+            </div>
           </div>
 
-          {/* Right Column - Quick Actions & Today's Events */}
+          {/* Right Column - Mini Calendar, Day Canvas, Quick Actions & Events */}
           <div className="col-span-12 lg:col-span-8 space-y-5">
+            {/* Mini Calendar & Day Canvas - Side by Side */}
+            <div className="grid grid-cols-2 gap-5">
+              {/* Mini Calendar - Non-clickable */}
+              <div className={`relative overflow-hidden h-[380px] backdrop-blur-xl bg-gradient-to-br ${colors.cardBg} rounded-xl p-4 border-2 ${cardCharacters.informative.border} ${colors.shadowCard}`}>
+                {/* Paper Texture */}
+                <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
+                
+                <div className="relative h-full">
+                  <MiniCalendarWidget />
+                </div>
+              </div>
+
+              {/* Day Canvas */}
+              <div className={`relative overflow-hidden h-[380px] backdrop-blur-xl bg-gradient-to-br ${colors.cardBg} rounded-xl p-4 border-2 ${cardCharacters.informative.border} ${colors.shadowCard}`}>
+                {/* Paper Texture */}
+                <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
+                
+                <div className="relative h-full">
+                  <DayCanvasWidget onViewAll={handleNavigateToCalendar} />
+                </div>
+              </div>
+            </div>
+
             {/* Quick Actions */}
             <div className={`relative overflow-hidden backdrop-blur-xl bg-gradient-to-br ${colors.cardBg} rounded-xl p-5 border-2 ${colors.borderStrong} ${colors.shadowCard}`}>
               {/* Paper Texture */}
@@ -197,10 +232,10 @@ export default function EmployeeHomeContent({ department, onSectionChange }: Emp
           </div>
         </div>
 
-        {/* Middle Section - My Tickets (Full Width) & Tickets Donut */}
+        {/* Middle Section - My Assigned Tickets & My Projects/Sprints */}
         <div className="grid grid-cols-12 gap-5">
-          {/* My Tickets Widget - Full Width */}
-          <div className="col-span-12">
+          {/* My Tickets Widget */}
+          <div className="col-span-12 lg:col-span-6">
             <div className={`relative overflow-hidden backdrop-blur-xl bg-gradient-to-br ${colors.cardBg} rounded-xl p-5 border-2 ${colors.borderStrong} ${colors.shadowCard}`}>
               {/* Paper Texture */}
               <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
@@ -211,20 +246,8 @@ export default function EmployeeHomeContent({ department, onSectionChange }: Emp
             </div>
           </div>
 
-          {/* Tickets Donut - Left Side */}
-          <div className="col-span-12 lg:col-span-5">
-            <div className={`relative overflow-hidden backdrop-blur-xl bg-gradient-to-br ${colors.cardBg} rounded-xl p-5 border-2 ${colors.borderStrong} ${colors.shadowCard}`}>
-              {/* Paper Texture */}
-              <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
-              
-              <div className="relative">
-                <MyTicketsDonut onClick={handleNavigateToAssignedTickets} />
-              </div>
-            </div>
-          </div>
-
-          {/* My Projects/Sprints Widget - Right Side */}
-          <div className="col-span-12 lg:col-span-7">
+          {/* My Projects/Sprints Widget */}
+          <div className="col-span-12 lg:col-span-6">
             <div className={`relative overflow-hidden backdrop-blur-xl bg-gradient-to-br ${colors.cardBg} rounded-xl p-5 border-2 ${colors.borderStrong} ${colors.shadowCard}`}>
               {/* Paper Texture */}
               <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>

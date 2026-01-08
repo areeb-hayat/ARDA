@@ -1,13 +1,13 @@
 // ============================================
 // app/components/ticketing/MyTicketsWrapper.tsx
 // Wrapper that fetches user info and passes to MyTickets
-// UPDATED WITH THEME CONTEXT
+// UPDATED WITH CONSISTENT THEME STYLING
 // ============================================
 
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Loader2, AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, TicketIcon } from 'lucide-react';
 import { useTheme } from '@/app/context/ThemeContext';
 import MyTickets from './MyTickets';
 
@@ -16,7 +16,7 @@ interface MyTicketsWrapperProps {
 }
 
 export default function MyTicketsWrapper({ onBack }: MyTicketsWrapperProps) {
-  const { colors, cardCharacters } = useTheme();
+  const { colors, cardCharacters, showToast } = useTheme();
   const charColors = cardCharacters.informative;
   
   const [userId, setUserId] = useState('');
@@ -84,25 +84,22 @@ export default function MyTicketsWrapper({ onBack }: MyTicketsWrapperProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen p-4 md:p-6 space-y-4">
-        <div className={`relative overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${charColors.bg} ${charColors.border} ${colors.shadowCard} p-8`}>
+      <div className="space-y-6">
+        {/* Header Card with Loading State */}
+        <div className={`relative overflow-hidden rounded-2xl border backdrop-blur-sm bg-gradient-to-br ${charColors.bg} ${charColors.border} ${colors.shadowCard} transition-all duration-300`}>
           <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
-          <div className="relative flex items-center space-x-3">
-            <button
-              onClick={handleBack}
-              className={`group relative flex items-center justify-center p-2 rounded-lg transition-all duration-300 overflow-hidden bg-gradient-to-br ${colors.cardBg} border ${charColors.border} ${colors.borderHover} backdrop-blur-sm ${colors.shadowCard} hover:${colors.shadowHover}`}
-            >
-              <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
-              <div 
-                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                style={{ boxShadow: `inset 0 0 14px ${colors.glowPrimary}, inset 0 0 28px ${colors.glowPrimary}` }}
-              ></div>
-              <ArrowLeft className={`h-5 w-5 relative z-10 transition-transform duration-300 group-hover:-translate-x-1 ${charColors.iconColor}`} />
-            </button>
-            
-            <div>
-              <h2 className={`text-xl font-black ${charColors.text}`}>My Tickets</h2>
-              <p className={`text-sm ${colors.textMuted}`}>Loading your tickets...</p>
+          
+          <div className="relative p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`p-3 rounded-xl bg-gradient-to-r ${charColors.bg} border-2 ${charColors.border}`}>
+                  <TicketIcon className={`h-6 w-6 ${charColors.iconColor}`} />
+                </div>
+                <div>
+                  <h1 className={`text-2xl font-black ${charColors.text}`}>My Tickets</h1>
+                  <p className={`text-sm ${colors.textMuted}`}>Loading your tickets...</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -124,24 +121,21 @@ export default function MyTicketsWrapper({ onBack }: MyTicketsWrapperProps) {
 
   if (error) {
     return (
-      <div className="min-h-screen p-4 md:p-6 space-y-4">
-        <div className={`relative overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${charColors.bg} ${charColors.border} ${colors.shadowCard} p-8`}>
+      <div className="space-y-6">
+        {/* Header Card with Error State */}
+        <div className={`relative overflow-hidden rounded-2xl border backdrop-blur-sm bg-gradient-to-br ${charColors.bg} ${charColors.border} ${colors.shadowCard} transition-all duration-300`}>
           <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
-          <div className="relative flex items-center space-x-3">
-            <button
-              onClick={handleBack}
-              className={`group relative flex items-center justify-center p-2 rounded-lg transition-all duration-300 overflow-hidden bg-gradient-to-br ${colors.cardBg} border ${charColors.border} ${colors.borderHover} backdrop-blur-sm ${colors.shadowCard} hover:${colors.shadowHover}`}
-            >
-              <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
-              <div 
-                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                style={{ boxShadow: `inset 0 0 14px ${colors.glowPrimary}, inset 0 0 28px ${colors.glowPrimary}` }}
-              ></div>
-              <ArrowLeft className={`h-5 w-5 relative z-10 transition-transform duration-300 group-hover:-translate-x-1 ${charColors.iconColor}`} />
-            </button>
-            
-            <div>
-              <h2 className={`text-xl font-black ${charColors.text}`}>My Tickets</h2>
+          
+          <div className="relative p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`p-3 rounded-xl bg-gradient-to-r ${charColors.bg} border-2 ${charColors.border}`}>
+                  <TicketIcon className={`h-6 w-6 ${charColors.iconColor}`} />
+                </div>
+                <div>
+                  <h1 className={`text-2xl font-black ${charColors.text}`}>My Tickets</h1>
+                </div>
+              </div>
             </div>
           </div>
         </div>

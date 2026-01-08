@@ -1,7 +1,7 @@
 // ============================================
 // app/components/ticketing/MyTickets.tsx
-// Shows ALL tickets created by current user (including closed)
-// UPDATED WITH APPOINTMENTS-STYLE HEADER AND THEME CONTEXT
+// Card-style layout for tickets created by user
+// UPDATED TO MATCH CREATE NEW TICKET LAYOUT
 // ============================================
 
 'use client';
@@ -9,7 +9,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Ticket as TicketIcon, 
-  Eye, 
   Loader2, 
   AlertCircle, 
   Clock, 
@@ -20,7 +19,6 @@ import {
   TrendingUp,
   Search,
   X,
-  ArrowUpDown,
   RefreshCw,
   ArrowLeft
 } from 'lucide-react';
@@ -31,6 +29,7 @@ interface Ticket {
   _id: string;
   ticketNumber: string;
   functionalityName: string;
+  department: string;
   status: string;
   priority: string;
   workflowStage: string;
@@ -52,7 +51,7 @@ interface Props {
 }
 
 export default function MyTickets({ userId, onBack }: Props) {
-  const { colors, cardCharacters } = useTheme();
+  const { colors, cardCharacters, showToast } = useTheme();
   const charColors = cardCharacters.informative;
   
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -66,8 +65,6 @@ export default function MyTickets({ userId, onBack }: Props) {
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'date' | 'priority' | 'status'>('date');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   
   // Unique functionalities for filter
   const [functionalities, setFunctionalities] = useState<string[]>([]);
@@ -92,7 +89,7 @@ export default function MyTickets({ userId, onBack }: Props) {
 
   useEffect(() => {
     applyFilters();
-  }, [tickets, statusFilter, searchQuery, priorityFilter, functionalityFilter, sortBy, sortOrder]);
+  }, [tickets, statusFilter, searchQuery, priorityFilter, functionalityFilter]);
 
   const fetchTickets = async () => {
     try {
@@ -114,6 +111,7 @@ export default function MyTickets({ userId, onBack }: Props) {
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
+      showToast(err instanceof Error ? err.message : 'Failed to load tickets', 'error');
     } finally {
       setLoading(false);
     }
@@ -149,35 +147,8 @@ export default function MyTickets({ userId, onBack }: Props) {
       filtered = filtered.filter(t => t.functionalityName === functionalityFilter);
     }
 
-    // Sort
-    filtered.sort((a, b) => {
-      let aVal, bVal;
-
-      switch (sortBy) {
-        case 'date':
-          aVal = new Date(a.createdAt).getTime();
-          bVal = new Date(b.createdAt).getTime();
-          break;
-        case 'priority':
-          const priorityOrder = { high: 3, medium: 2, low: 1 };
-          aVal = priorityOrder[a.priority as keyof typeof priorityOrder] || 0;
-          bVal = priorityOrder[b.priority as keyof typeof priorityOrder] || 0;
-          break;
-        case 'status':
-          const statusOrder = { pending: 1, 'in-progress': 2, blocked: 3, resolved: 4, closed: 5 };
-          aVal = statusOrder[a.status as keyof typeof statusOrder] || 0;
-          bVal = statusOrder[b.status as keyof typeof statusOrder] || 0;
-          break;
-        default:
-          return 0;
-      }
-
-      if (sortOrder === 'asc') {
-        return aVal > bVal ? 1 : -1;
-      } else {
-        return aVal < bVal ? 1 : -1;
-      }
-    });
+    // Sort by creation date (newest first)
+    filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     setFilteredTickets(filtered);
   };
@@ -187,8 +158,6 @@ export default function MyTickets({ userId, onBack }: Props) {
     setStatusFilter('all');
     setPriorityFilter('all');
     setFunctionalityFilter('all');
-    setSortBy('date');
-    setSortOrder('desc');
   };
 
   const activeFiltersCount = [
@@ -201,20 +170,20 @@ export default function MyTickets({ userId, onBack }: Props) {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Clock className="w-4 h-4" />;
+        return <Clock className="w-5 h-5" />;
       case 'in-progress':
-        return <TrendingUp className="w-4 h-4" />;
+        return <TrendingUp className="w-5 h-5" />;
       case 'blocked':
-        return <AlertTriangle className="w-4 h-4" />;
+        return <AlertTriangle className="w-5 h-5" />;
       case 'resolved':
       case 'closed':
-        return <CheckCircle className="w-4 h-4" />;
+        return <CheckCircle className="w-5 h-5" />;
       default:
-        return <TicketIcon className="w-4 h-4" />;
+        return <TicketIcon className="w-5 h-5" />;
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusCharacter = (status: string) => {
     switch (status) {
       case 'pending': return cardCharacters.interactive;
       case 'in-progress': return cardCharacters.informative;
@@ -238,12 +207,23 @@ export default function MyTickets({ userId, onBack }: Props) {
 
   if (loading) {
     return (
-      <div className="min-h-screen p-4 md:p-6 space-y-4">
-        <div className={`relative overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${charColors.bg} ${charColors.border} ${colors.shadowCard} p-8`}>
+      <div className="space-y-6">
+        {/* Header Card with Loading State */}
+        <div className={`relative overflow-hidden rounded-2xl border backdrop-blur-sm bg-gradient-to-br ${charColors.bg} ${charColors.border} ${colors.shadowCard} transition-all duration-300`}>
           <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
-          <div className="relative">
-            <h2 className={`text-xl font-black ${charColors.text} mb-2`}>My Tickets</h2>
-            <p className={`text-sm ${colors.textMuted}`}>Loading your tickets...</p>
+          
+          <div className="relative p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`p-3 rounded-xl bg-gradient-to-r ${charColors.bg} border-2 ${charColors.border}`}>
+                  <TicketIcon className={`h-6 w-6 ${charColors.iconColor}`} />
+                </div>
+                <div>
+                  <h1 className={`text-2xl font-black ${charColors.text}`}>My Tickets</h1>
+                  <p className={`text-sm ${colors.textMuted}`}>Loading your tickets...</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         
@@ -264,10 +244,23 @@ export default function MyTickets({ userId, onBack }: Props) {
 
   if (error) {
     return (
-      <div className="min-h-screen p-4 md:p-6 space-y-4">
-        <div className={`relative overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${charColors.bg} ${charColors.border} ${colors.shadowCard} p-8`}>
+      <div className="space-y-6">
+        {/* Header Card with Error State */}
+        <div className={`relative overflow-hidden rounded-2xl border backdrop-blur-sm bg-gradient-to-br ${charColors.bg} ${charColors.border} ${colors.shadowCard} transition-all duration-300`}>
           <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
-          <h2 className={`text-xl font-black ${charColors.text}`}>My Tickets</h2>
+          
+          <div className="relative p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`p-3 rounded-xl bg-gradient-to-r ${charColors.bg} border-2 ${charColors.border}`}>
+                  <TicketIcon className={`h-6 w-6 ${charColors.iconColor}`} />
+                </div>
+                <div>
+                  <h1 className={`text-2xl font-black ${charColors.text}`}>My Tickets</h1>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         
         <div className={`relative overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${cardCharacters.urgent.bg} ${cardCharacters.urgent.border} p-10 text-center`}>
@@ -305,175 +298,222 @@ export default function MyTickets({ userId, onBack }: Props) {
   const counts = getStatusCounts();
 
   return (
-    <div className="min-h-screen p-4 md:p-6 space-y-4">
-      {/* Header with Back Button and Refresh */}
-      <div className={`relative overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${charColors.bg} ${charColors.border} ${colors.shadowCard} transition-all duration-300`}>
+    <div className="space-y-6">
+      {/* Combined Header and Filters Section - Matching Create New Ticket Layout */}
+      <div className={`relative overflow-hidden rounded-2xl border backdrop-blur-sm bg-gradient-to-br ${charColors.bg} ${charColors.border} ${colors.shadowCard} transition-all duration-300`}>
         <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
         
-        <div className="relative p-4 space-y-4">
+        <div className="relative p-6 space-y-4">
+          {/* Title Row */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              {/* Back Button */}
-              <button
-                onClick={handleBack}
-                className={`group relative flex items-center justify-center p-2 rounded-lg transition-all duration-300 overflow-hidden bg-gradient-to-br ${colors.cardBg} border ${charColors.border} ${colors.borderHover} backdrop-blur-sm ${colors.shadowCard} hover:${colors.shadowHover}`}
-              >
-                <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
-                <div 
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                  style={{ boxShadow: `inset 0 0 14px ${colors.glowPrimary}, inset 0 0 28px ${colors.glowPrimary}` }}
-                ></div>
-                <ArrowLeft className={`h-5 w-5 relative z-10 transition-transform duration-300 group-hover:-translate-x-1 ${charColors.iconColor}`} />
-              </button>
-
-              <div className={`p-2 rounded-lg bg-gradient-to-r ${charColors.bg}`}>
-                <TicketIcon className={`h-5 w-5 ${charColors.iconColor}`} />
+            <div className="flex items-center gap-3">
+              <div className={`p-3 rounded-xl bg-gradient-to-r ${charColors.bg} border-2 ${charColors.border}`}>
+                <TicketIcon className={`h-6 w-6 ${charColors.iconColor}`} />
               </div>
               <div>
-                <h1 className={`text-xl font-black ${charColors.text}`}>My Tickets</h1>
-                <p className={`text-xs ${colors.textMuted}`}>
+                <h1 className={`text-2xl font-black ${charColors.text}`}>My Tickets</h1>
+                <p className={`text-sm ${colors.textMuted}`}>
                   {filteredTickets.length} ticket{filteredTickets.length !== 1 ? 's' : ''} created by you
                 </p>
               </div>
             </div>
             
-            {/* Refresh Button */}
             <button
               onClick={fetchTickets}
               disabled={loading}
-              className={`group relative flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-300 overflow-hidden bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText} border border-transparent ${colors.shadowCard} hover:${colors.shadowHover} disabled:opacity-50`}
+              className={`group relative px-5 py-3 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 overflow-hidden flex items-center gap-2 bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText} disabled:opacity-50`}
             >
               <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
               <div 
                 className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                style={{ boxShadow: `inset 0 0 14px ${colors.glowPrimary}, inset 0 0 28px ${colors.glowPrimary}` }}
+                style={{ boxShadow: `inset 0 0 14px ${colors.glowPrimary}` }}
               ></div>
               <RefreshCw className={`h-4 w-4 relative z-10 transition-transform duration-300 ${loading ? 'animate-spin' : 'group-hover:rotate-180'}`} />
-              <span className="text-sm font-bold relative z-10">Refresh</span>
+              <span className="relative z-10">Refresh</span>
             </button>
           </div>
 
-          {/* Always Visible Filters */}
-          <div className={`p-3 rounded-lg border ${charColors.border} bg-gradient-to-br ${colors.cardBg} backdrop-blur-sm`}>
-            <div className="flex items-center space-x-2 mb-2">
-              <Filter className={`h-4 w-4 ${colors.textMuted}`} />
-              <span className={`text-xs font-bold ${colors.textSecondary}`}>Filters:</span>
-            </div>
+          {/* Status Tabs (Replacing Department Tabs) */}
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={`group relative px-4 py-2 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 overflow-hidden border-2 ${
+                statusFilter === 'all'
+                  ? `bg-gradient-to-r ${charColors.bg} ${charColors.border} ${charColors.text}`
+                  : `${colors.inputBg} ${colors.textSecondary} ${colors.borderSubtle}`
+              }`}
+            >
+              {statusFilter === 'all' && (
+                <>
+                  <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
+                  <div 
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                    style={{ boxShadow: `inset 0 0 20px ${colors.glowPrimary}` }}
+                  ></div>
+                </>
+              )}
+              <span className="relative z-10">All ({counts.all})</span>
+            </button>
             
+            <button
+              onClick={() => setStatusFilter('pending')}
+              className={`group relative px-4 py-2 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 overflow-hidden border-2 ${
+                statusFilter === 'pending'
+                  ? `bg-gradient-to-r ${charColors.bg} ${charColors.border} ${charColors.text}`
+                  : `${colors.inputBg} ${colors.textSecondary} ${colors.borderSubtle}`
+              }`}
+            >
+              {statusFilter === 'pending' && (
+                <>
+                  <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
+                  <div 
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                    style={{ boxShadow: `inset 0 0 20px ${colors.glowPrimary}` }}
+                  ></div>
+                </>
+              )}
+              <span className="relative z-10">Pending ({counts.pending})</span>
+            </button>
+            
+            <button
+              onClick={() => setStatusFilter('in-progress')}
+              className={`group relative px-4 py-2 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 overflow-hidden border-2 ${
+                statusFilter === 'in-progress'
+                  ? `bg-gradient-to-r ${charColors.bg} ${charColors.border} ${charColors.text}`
+                  : `${colors.inputBg} ${colors.textSecondary} ${colors.borderSubtle}`
+              }`}
+            >
+              {statusFilter === 'in-progress' && (
+                <>
+                  <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
+                  <div 
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                    style={{ boxShadow: `inset 0 0 20px ${colors.glowPrimary}` }}
+                  ></div>
+                </>
+              )}
+              <span className="relative z-10">In Progress ({counts['in-progress']})</span>
+            </button>
+            
+            <button
+              onClick={() => setStatusFilter('blocked')}
+              className={`group relative px-4 py-2 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 overflow-hidden border-2 ${
+                statusFilter === 'blocked'
+                  ? `bg-gradient-to-r ${charColors.bg} ${charColors.border} ${charColors.text}`
+                  : `${colors.inputBg} ${colors.textSecondary} ${colors.borderSubtle}`
+              }`}
+            >
+              {statusFilter === 'blocked' && (
+                <>
+                  <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
+                  <div 
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                    style={{ boxShadow: `inset 0 0 20px ${colors.glowPrimary}` }}
+                  ></div>
+                </>
+              )}
+              <span className="relative z-10">Blocked ({counts.blocked})</span>
+            </button>
+            
+            <button
+              onClick={() => setStatusFilter('resolved')}
+              className={`group relative px-4 py-2 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 overflow-hidden border-2 ${
+                statusFilter === 'resolved'
+                  ? `bg-gradient-to-r ${charColors.bg} ${charColors.border} ${charColors.text}`
+                  : `${colors.inputBg} ${colors.textSecondary} ${colors.borderSubtle}`
+              }`}
+            >
+              {statusFilter === 'resolved' && (
+                <>
+                  <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
+                  <div 
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                    style={{ boxShadow: `inset 0 0 20px ${colors.glowPrimary}` }}
+                  ></div>
+                </>
+              )}
+              <span className="relative z-10">Resolved ({counts.resolved})</span>
+            </button>
+            
+            <button
+              onClick={() => setStatusFilter('closed')}
+              className={`group relative px-4 py-2 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 overflow-hidden border-2 ${
+                statusFilter === 'closed'
+                  ? `bg-gradient-to-r ${charColors.bg} ${charColors.border} ${charColors.text}`
+                  : `${colors.inputBg} ${colors.textSecondary} ${colors.borderSubtle}`
+              }`}
+            >
+              {statusFilter === 'closed' && (
+                <>
+                  <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
+                  <div 
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                    style={{ boxShadow: `inset 0 0 20px ${colors.glowPrimary}` }}
+                  ></div>
+                </>
+              )}
+              <span className="relative z-10">Closed ({counts.closed})</span>
+            </button>
+          </div>
+
+          {/* Search and Filters Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
             {/* Search Bar */}
-            <div className="mb-3">
-              <div className="relative">
-                <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${colors.textMuted}`} />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by ticket number, functionality, or stage..."
-                  className={`w-full pl-10 pr-10 py-2 rounded-lg text-sm transition-all ${colors.inputBg} border ${colors.inputBorder} ${colors.inputText} ${colors.inputPlaceholder}`}
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className={`absolute right-3 top-1/2 -translate-y-1/2 ${colors.textMuted} hover:${cardCharacters.urgent.iconColor} transition-colors`}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
+            <div className="lg:col-span-5 relative">
+              <Search className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${colors.textMuted}`} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by ticket number, functionality..."
+                className={`w-full pl-12 pr-12 py-3 rounded-xl text-sm transition-all ${colors.inputBg} border-2 ${colors.inputBorder} ${colors.inputText} ${colors.inputPlaceholder}`}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className={`absolute right-4 top-1/2 -translate-y-1/2 ${colors.textMuted} hover:${cardCharacters.urgent.iconColor} transition-colors`}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
             </div>
 
-            {/* Status Filter Pills */}
-            <div className="flex flex-wrap gap-2 mb-3">
-              <FilterButton
-                label="All"
-                count={counts.all}
-                active={statusFilter === 'all'}
-                onClick={() => setStatusFilter('all')}
-              />
-              <FilterButton
-                label="Pending"
-                count={counts.pending}
-                active={statusFilter === 'pending'}
-                onClick={() => setStatusFilter('pending')}
-              />
-              <FilterButton
-                label="In Progress"
-                count={counts['in-progress']}
-                active={statusFilter === 'in-progress'}
-                onClick={() => setStatusFilter('in-progress')}
-              />
-              <FilterButton
-                label="Blocked"
-                count={counts.blocked}
-                active={statusFilter === 'blocked'}
-                onClick={() => setStatusFilter('blocked')}
-              />
-              <FilterButton
-                label="Resolved"
-                count={counts.resolved}
-                active={statusFilter === 'resolved'}
-                onClick={() => setStatusFilter('resolved')}
-              />
-              <FilterButton
-                label="Closed"
-                count={counts.closed}
-                active={statusFilter === 'closed'}
-                onClick={() => setStatusFilter('closed')}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {/* Functionality Filter */}
+            {/* Functionality Filter */}
+            <div className="lg:col-span-3">
               <select
                 value={functionalityFilter}
                 onChange={(e) => setFunctionalityFilter(e.target.value)}
-                className={`px-3 py-2 rounded-lg text-xs transition-all cursor-pointer ${colors.inputBg} border ${colors.inputBorder} ${colors.inputText}`}
+                className={`w-full px-4 py-3 rounded-xl text-sm transition-all ${colors.inputBg} border-2 ${colors.inputBorder} ${colors.inputText}`}
               >
                 <option value="all">All Functionalities</option>
                 {functionalities.map((func) => (
                   <option key={func} value={func}>{func}</option>
                 ))}
               </select>
+            </div>
 
-              {/* Priority Filter */}
+            {/* Priority Filter */}
+            <div className="lg:col-span-2">
               <select
                 value={priorityFilter}
                 onChange={(e) => setPriorityFilter(e.target.value)}
-                className={`px-3 py-2 rounded-lg text-xs transition-all cursor-pointer ${colors.inputBg} border ${colors.inputBorder} ${colors.inputText}`}
+                className={`w-full px-4 py-3 rounded-xl text-sm transition-all ${colors.inputBg} border-2 ${colors.inputBorder} ${colors.inputText}`}
               >
                 <option value="all">All Priorities</option>
                 <option value="high">High</option>
                 <option value="medium">Medium</option>
                 <option value="low">Low</option>
               </select>
-
-              {/* Sort By */}
-              <div className="flex gap-2">
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className={`flex-1 px-3 py-2 rounded-lg text-xs transition-all cursor-pointer ${colors.inputBg} border ${colors.inputBorder} ${colors.inputText}`}
-                >
-                  <option value="date">Date</option>
-                  <option value="priority">Priority</option>
-                  <option value="status">Status</option>
-                </select>
-                <button
-                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                  className={`group relative px-3 py-2 rounded-lg font-bold text-sm transition-all duration-300 hover:scale-105 overflow-hidden border ${colors.inputBorder} ${colors.inputBg}`}
-                >
-                  <ArrowUpDown className={`w-4 h-4 relative z-10 transition-transform duration-300 ${sortOrder === 'desc' ? 'rotate-180' : ''} ${charColors.iconColor}`} />
-                </button>
-              </div>
             </div>
 
+            {/* Clear Filters Button */}
             {activeFiltersCount > 0 && (
-              <div className="flex justify-end mt-3">
+              <div className="lg:col-span-2 flex items-center">
                 <button
                   onClick={clearFilters}
-                  className={`group relative px-4 py-1.5 rounded-lg font-bold text-xs transition-all duration-300 hover:scale-105 overflow-hidden border ${cardCharacters.urgent.border} ${cardCharacters.urgent.bg} ${cardCharacters.urgent.text}`}
+                  className={`group relative w-full px-4 py-3 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 overflow-hidden border-2 ${cardCharacters.urgent.border} bg-gradient-to-r ${cardCharacters.urgent.bg} ${cardCharacters.urgent.text}`}
                 >
-                  Clear Filters ({activeFiltersCount})
+                  <span className="relative z-10">Clear ({activeFiltersCount})</span>
                 </button>
               </div>
             )}
@@ -481,9 +521,9 @@ export default function MyTickets({ userId, onBack }: Props) {
         </div>
       </div>
 
-      {/* Tickets List */}
+      {/* Tickets Grid - Card Style */}
       {filteredTickets.length === 0 ? (
-        <div className={`relative overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${charColors.bg} ${charColors.border} p-16 text-center`}>
+        <div className={`relative overflow-hidden rounded-2xl border-2 backdrop-blur-sm bg-gradient-to-br ${charColors.bg} ${charColors.border} p-16 text-center`}>
           <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
           <div className="relative">
             <TicketIcon className={`w-16 h-16 ${colors.textMuted} mx-auto mb-4 opacity-40`} />
@@ -504,7 +544,7 @@ export default function MyTickets({ userId, onBack }: Props) {
             {(searchQuery || activeFiltersCount > 0) && (
               <button
                 onClick={clearFilters}
-                className={`group relative mt-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 overflow-hidden border-2 inline-flex items-center gap-2 bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText}`}
+                className={`group relative mt-2 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 overflow-hidden border-2 inline-flex items-center gap-2 bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText}`}
               >
                 <span className="relative z-10">Clear All Filters</span>
               </button>
@@ -512,17 +552,18 @@ export default function MyTickets({ userId, onBack }: Props) {
           </div>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredTickets.map((ticket) => {
-            const statusCharColors = getStatusColor(ticket.status);
+            const statusChar = getStatusCharacter(ticket.status);
             const isClosed = ticket.status === 'closed';
             const hasUnresolvedBlockers = ticket.blockers?.some((b: any) => !b.isResolved);
+            const isSuper = ticket.department === 'Super Workflow';
             
             return (
-              <div
+              <button
                 key={ticket._id}
                 onClick={() => setSelectedTicket(ticket)}
-                className={`group relative overflow-hidden rounded-xl border backdrop-blur-sm bg-gradient-to-br ${cardCharacters.neutral.bg} ${cardCharacters.neutral.border} p-5 ${colors.shadowCard} hover:${colors.shadowHover} transition-all duration-300 cursor-pointer hover:scale-[1.01] ${isClosed ? 'opacity-70' : ''}`}
+                className={`group relative overflow-hidden rounded-2xl border-2 backdrop-blur-sm text-left transition-all duration-300 hover:scale-[1.02] bg-gradient-to-br ${statusChar.bg} ${statusChar.border} ${colors.shadowCard} hover:${colors.shadowHover} ${isClosed ? 'opacity-70' : ''}`}
               >
                 <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
                 <div 
@@ -530,73 +571,77 @@ export default function MyTickets({ userId, onBack }: Props) {
                   style={{ boxShadow: `inset 0 0 30px ${colors.glowPrimary}` }}
                 ></div>
 
-                <div className="relative z-10 flex items-start justify-between">
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <div 
-                        className={`p-2 rounded-lg transition-transform duration-300 group-hover:scale-110 bg-gradient-to-r ${statusCharColors.bg}`}
-                      >
-                        {getStatusIcon(ticket.status)}
-                      </div>
-                      
-                      <h4 className={`text-lg font-black ${colors.textPrimary}`}>
-                        {ticket.ticketNumber}
-                      </h4>
-                      
-                      <div
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r ${statusCharColors.bg} ${statusCharColors.text}`}
-                      >
-                        {ticket.status.replace('-', ' ').toUpperCase()}
-                      </div>
-                      
-                      {isClosed && (
-                        <div className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 bg-gradient-to-r ${cardCharacters.creative.bg} ${cardCharacters.creative.text}`}>
-                          <RotateCcw className="w-3 h-3" />
-                          Can Reopen
-                        </div>
-                      )}
-                      
-                      {hasUnresolvedBlockers && (
-                        <div className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 bg-gradient-to-r ${cardCharacters.urgent.bg} ${cardCharacters.urgent.text}`}>
-                          <AlertTriangle className="w-3 h-3" />
-                          {ticket.blockers.filter((b: any) => !b.isResolved).length} Blocker{ticket.blockers.filter((b: any) => !b.isResolved).length > 1 ? 's' : ''}
-                        </div>
-                      )}
+                <div className="relative z-10 p-6 space-y-4">
+                  {/* Icon and Status */}
+                  <div className="flex items-start justify-between">
+                    <div className={`p-3 rounded-xl transition-transform duration-300 group-hover:scale-110 bg-gradient-to-r ${statusChar.bg} border-2 ${statusChar.border}`}>
+                      {getStatusIcon(ticket.status)}
                     </div>
                     
-                    <p className={`text-sm font-semibold ${colors.textSecondary} leading-relaxed`}>
+                    <div className={`px-3 py-1.5 rounded-lg text-xs font-bold ${statusChar.bg} ${statusChar.text} border ${statusChar.border}`}>
+                      {ticket.status.replace('-', ' ').toUpperCase()}
+                    </div>
+                  </div>
+
+                  {/* Ticket Number */}
+                  <div>
+                    <h3 className={`text-xl font-black ${statusChar.text} mb-1`}>
+                      {ticket.ticketNumber}
+                    </h3>
+                    <p className={`text-sm font-semibold ${colors.textSecondary} line-clamp-2`}>
                       {ticket.functionalityName}
                     </p>
+                  </div>
+
+                  {/* Badges */}
+                  <div className="flex flex-wrap gap-2">
+                    {isSuper && (
+                      <div className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 bg-gradient-to-r ${charColors.bg} ${charColors.text} border ${charColors.border}`}>
+                        ⚡ Super Workflow
+                      </div>
+                    )}
                     
-                    <div className={`flex items-center gap-4 text-xs font-medium ${colors.textMuted}`}>
+                    {isClosed && (
+                      <div className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 bg-gradient-to-r ${cardCharacters.creative.bg} ${cardCharacters.creative.text} border ${cardCharacters.creative.border}`}>
+                        <RotateCcw className="w-3 h-3" />
+                        Can Reopen
+                      </div>
+                    )}
+                    
+                    {hasUnresolvedBlockers && (
+                      <div className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 bg-gradient-to-r ${cardCharacters.urgent.bg} ${cardCharacters.urgent.text} border ${cardCharacters.urgent.border}`}>
+                        <AlertTriangle className="w-3 h-3" />
+                        {ticket.blockers.filter((b: any) => !b.isResolved).length} Blocker{ticket.blockers.filter((b: any) => !b.isResolved).length > 1 ? 's' : ''}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer Info */}
+                  <div className="pt-3 border-t border-current/10 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className={`font-medium ${colors.textMuted}`}>Priority:</span>
                       <div className="flex items-center gap-1.5">
-                        <div className={`w-1.5 h-1.5 rounded-full ${
+                        <div className={`w-2 h-2 rounded-full ${
                           ticket.priority === 'high' ? 'bg-red-500' :
                           ticket.priority === 'medium' ? 'bg-yellow-500' :
                           'bg-green-500'
                         }`}></div>
-                        <span className="capitalize">{ticket.priority} Priority</span>
+                        <span className={`font-bold capitalize ${statusChar.text}`}>{ticket.priority}</span>
                       </div>
-                      <span>•</span>
-                      <span>{new Date(ticket.createdAt).toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric', 
-                        year: 'numeric' 
-                      })}</span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-xs">
+                      <span className={`font-medium ${colors.textMuted}`}>Created:</span>
+                      <span className={`font-bold ${statusChar.text}`}>
+                        {new Date(ticket.createdAt).toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric' 
+                        })}
+                      </span>
                     </div>
                   </div>
-                  
-                  <button
-                    className={`group/btn relative p-3 rounded-xl transition-all duration-300 opacity-0 group-hover:opacity-100 hover:scale-110 overflow-hidden border-2 ml-4 bg-gradient-to-r ${charColors.bg} ${charColors.border}`}
-                  >
-                    <div 
-                      className="absolute inset-0 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-500"
-                      style={{ boxShadow: `inset 0 0 20px ${colors.glowPrimary}` }}
-                    ></div>
-                    <Eye className={`w-5 h-5 relative z-10 transition-transform duration-300 group-hover/btn:scale-110 ${charColors.iconColor}`} />
-                  </button>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -615,39 +660,5 @@ export default function MyTickets({ userId, onBack }: Props) {
         />
       )}
     </div>
-  );
-}
-
-// Filter Button Component
-interface FilterButtonProps {
-  label: string;
-  count: number;
-  active: boolean;
-  onClick: () => void;
-}
-
-function FilterButton({ label, count, active, onClick }: FilterButtonProps) {
-  const { colors, cardCharacters } = useTheme();
-  const charColors = cardCharacters.informative;
-  
-  return (
-    <button
-      onClick={onClick}
-      className={`group relative px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 hover:scale-105 overflow-hidden border ${
-        active
-          ? `bg-gradient-to-r ${charColors.bg} ${charColors.border} ${charColors.text}`
-          : `${colors.inputBg} ${colors.borderSubtle} ${colors.textSecondary}`
-      }`}
-    >
-      {!active && (
-        <div 
-          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-          style={{ boxShadow: `inset 0 0 20px ${colors.glowSecondary}` }}
-        ></div>
-      )}
-      <span className="relative z-10">
-        {label} <span className={`${active ? 'opacity-90' : 'opacity-60'}`}>({count})</span>
-      </span>
-    </button>
   );
 }

@@ -4,7 +4,7 @@ import bcrypt from 'bcrypt';
 import dbConnect from '@/lib/mongoose';
 import FormData from '@/models/FormData';
 
-type UserRole = 'employee.other' | 'employee.hr' | 'depthead.hr' | 'depthead.other';
+type UserRole = 'employee.other' | 'employee.hr' | 'depthead.hr' | 'depthead.other' | 'admin';
 
 export async function POST(request: NextRequest) {
   try {
@@ -69,21 +69,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Determine role based on title, department, and isDeptHead
+    // Determine role based on department, title, and isDeptHead
     let role: UserRole = 'employee.other';
     
-    // Check if admin based on title
     const titleLower = employee.title?.toLowerCase() || '';
     const deptLower = employee.department?.toLowerCase() || '';
     
-    if (titleLower === 'admin' || 
-        titleLower === 'administrator' ||
-        titleLower === 'system admin' ||
-        titleLower === 'system administrator') {
+    // PRIORITY 1: Check if super user department (exact match, case-insensitive)
+    if (deptLower === 'super user') {
       role = 'admin';
-      console.log('User is admin based on title');
+      console.log('User is super user - assigned admin role');
     }
-    // Check if HR department
+    // PRIORITY 2: Check if HR department
     else if (deptLower.includes('human resources') || 
              deptLower === 'hr' ||
              deptLower === 'human resource') {
@@ -95,7 +92,7 @@ export async function POST(request: NextRequest) {
         console.log('User is HR employee');
       }
     }
-    // Other departments
+    // PRIORITY 3: Other departments (including "admin" department)
     else {
       if (employee.isDeptHead) {
         role = 'depthead.other';
@@ -121,6 +118,7 @@ export async function POST(request: NextRequest) {
     };
 
     console.log('Login successful. Role assigned:', role);
+    console.log('Department:', employee.department);
 
     return NextResponse.json({
       success: true,

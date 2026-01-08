@@ -11,6 +11,8 @@ import TeamMembersStrip from './HomeContent/TeamMembersStrip';
 import ProjectsSprintsWidget from './HomeContent/ProjectsSprintsWidget';
 import TodaysEventsWidget from './HomeContent/TodaysEventsWidget';
 import UpcomingEventsWidget from './HomeContent/UpcomingEventsWidget';
+import MiniCalendarWidget from './HomeContent/MiniCalendarWidget';
+import DayCanvasWidget from './HomeContent/DayCanvasWidget';
 import AssignedTicketsWidget from './HomeContent/AssignedTicketsWidget';
 import LoadingState from './HomeContent/LoadingState';
 import Styles from './HomeContent/Styles';
@@ -134,9 +136,9 @@ export default function HRHeadHomeContent({ department, onSectionChange }: HRHea
     <>
       {/* Dashboard Grid Layout */}
       <div className="space-y-6">
-        {/* Top Section - Announcements and Quick Actions/Today's Events */}
+        {/* Top Section - Announcements/Tickets and Calendar/Canvas/Quick Actions */}
         <div className="grid grid-cols-12 gap-5">
-          {/* Left Column - Announcements (Reduced Width) */}
+          {/* Left Column - Announcements & Department Tickets */}
           <div className="col-span-12 lg:col-span-4 space-y-5">
             {/* Organization Announcements - HR Head has CRUD access */}
             <div className={`relative overflow-hidden h-[320px] backdrop-blur-xl bg-gradient-to-br ${colors.cardBg} rounded-xl p-4 border-2 ${cardCharacters.authoritative.border} ${colors.shadowCard}`}>
@@ -144,9 +146,9 @@ export default function HRHeadHomeContent({ department, onSectionChange }: HRHea
               <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
               
               <div className="relative h-full">
-                <OrgAnnouncementsWidget
-                  announcements={orgAnnouncements}
+                <OrgAnnouncementsWidget 
                   onAnnouncementClick={handleNavigateToOrgAnnouncements}
+                  userDepartment={department}
                 />
               </div>
             </div>
@@ -163,10 +165,46 @@ export default function HRHeadHomeContent({ department, onSectionChange }: HRHea
                 />
               </div>
             </div>
+
+            {/* Department Tickets Donut - Below Announcements */}
+            <div className={`relative overflow-hidden backdrop-blur-xl bg-gradient-to-br ${colors.cardBg} rounded-xl p-5 border-2 ${colors.borderStrong} ${colors.shadowCard}`}>
+              {/* Paper Texture */}
+              <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
+              
+              <div className="relative">
+                <DeptTicketsDonut 
+                  department={department}
+                  onClick={handleNavigateToTeam}
+                />
+              </div>
+            </div>
           </div>
 
-          {/* Right Column - Quick Actions & Today's Events */}
+          {/* Right Column - Mini Calendar, Day Canvas, Quick Actions & Events */}
           <div className="col-span-12 lg:col-span-8 space-y-5">
+            {/* Mini Calendar & Day Canvas - Side by Side */}
+            <div className="grid grid-cols-2 gap-5">
+              {/* Mini Calendar - Non-clickable */}
+              <div className={`relative overflow-hidden h-[380px] backdrop-blur-xl bg-gradient-to-br ${colors.cardBg} rounded-xl p-4 border-2 ${cardCharacters.informative.border} ${colors.shadowCard}`}>
+                {/* Paper Texture */}
+                <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
+                
+                <div className="relative h-full">
+                  <MiniCalendarWidget />
+                </div>
+              </div>
+
+              {/* Day Canvas */}
+              <div className={`relative overflow-hidden h-[380px] backdrop-blur-xl bg-gradient-to-br ${colors.cardBg} rounded-xl p-4 border-2 ${cardCharacters.informative.border} ${colors.shadowCard}`}>
+                {/* Paper Texture */}
+                <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
+                
+                <div className="relative h-full">
+                  <DayCanvasWidget onViewAll={handleNavigateToCalendar} />
+                </div>
+              </div>
+            </div>
+
             {/* Quick Actions */}
             <div className={`relative overflow-hidden backdrop-blur-xl bg-gradient-to-br ${colors.cardBg} rounded-xl p-5 border-2 ${colors.borderStrong} ${colors.shadowCard}`}>
               {/* Paper Texture */}
@@ -232,25 +270,10 @@ export default function HRHeadHomeContent({ department, onSectionChange }: HRHea
           </div>
         </div>
 
-        {/* Bottom Section - Department Tickets & Team Members */}
+        {/* Bottom Section - Team Members (Full Width) */}
         <div className="grid grid-cols-12 gap-5">
-          {/* Department Tickets Donut */}
-          <div className="col-span-12 lg:col-span-5">
-            <div className={`relative overflow-hidden backdrop-blur-xl bg-gradient-to-br ${colors.cardBg} rounded-xl p-5 border-2 ${colors.borderStrong} ${colors.shadowCard}`}>
-              {/* Paper Texture */}
-              <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
-              
-              <div className="relative">
-                <DeptTicketsDonut 
-                  department={department}
-                  onClick={handleNavigateToTeam}
-                />
-              </div>
-            </div>
-          </div>
-
           {/* Team Members Strip */}
-          <div className="col-span-12 lg:col-span-7">
+          <div className="col-span-12">
             <div className={`relative overflow-hidden backdrop-blur-xl bg-gradient-to-br ${colors.cardBg} rounded-xl p-5 border-2 ${colors.borderStrong} ${colors.shadowCard}`}>
               {/* Paper Texture */}
               <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>

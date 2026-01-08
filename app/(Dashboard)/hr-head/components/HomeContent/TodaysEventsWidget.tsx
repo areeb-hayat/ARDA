@@ -55,100 +55,49 @@ export default function TodaysEventsWidget({ onViewAll, dayHealth = 'good' }: To
     try {
       const userData = localStorage.getItem('user');
       if (!userData) {
-        console.log('❌ Employee TodaysEvents: No user data in localStorage');
+        console.log('❌ TodaysEvents: No user data in localStorage');
         setLoading(false);
         return;
       }
       
       const user = JSON.parse(userData);
-      console.log('👤 Employee TodaysEvents: Full user object:', user);
-      
-      // Use _id as userId (MongoDB ObjectId)
       const userId = user._id;
       
       if (!userId) {
-        console.error('❌ Employee TodaysEvents: No user ID found in user object:', user);
+        console.error('❌ TodaysEvents: No user ID found');
         setLoading(false);
         return;
       }
       
-      console.log('📅 Employee TodaysEvents: Fetching today\'s events for userId:', userId);
-      
-      // Get today's date range
-      const now = new Date();
-      const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      console.log('📅 TodaysEvents: Fetching events for userId:', userId);
 
-      console.log('📅 Employee TodaysEvents: Date range:', {
-        start: startDate.toISOString(),
-        end: endDate.toISOString(),
-        today: now.toISOString()
-      });
-
-      const params = new URLSearchParams({
-        userId: userId,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-      });
-
-      const apiUrl = `/api/calendar/events?${params}`;
-      console.log('🌐 Employee TodaysEvents: API URL:', apiUrl);
-
-      const response = await fetch(apiUrl);
-      
-      console.log('📡 Employee TodaysEvents: Response status:', response.status);
+      const response = await fetch(`/api/calendar/events?userId=${userId}`);
       
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Employee TodaysEvents: API Response:', {
-          totalEvents: data.events?.length || 0,
-          events: data.events
-        });
+        console.log('✅ TodaysEvents: Fetched events:', data.events?.length || 0);
         
-        // Filter to only today's events and not completed
-        const today = new Date();
+        // Filter to today's events using the same logic as CalendarSidebar
+        const today = new Date().toDateString();
         const todayEvents = (data.events || [])
           .filter((event: TimeIntent) => {
-            if (event.isCompleted) {
-              console.log('Filtering out completed event:', event.title);
-              return false;
-            }
-            
-            const eventDate = event.startTime ? new Date(event.startTime) : null;
-            if (!eventDate) {
-              console.log('Event has no startTime:', event.title);
-              return false;
-            }
-            
-            const isToday = eventDate.getFullYear() === today.getFullYear() &&
-                   eventDate.getMonth() === today.getMonth() &&
-                   eventDate.getDate() === today.getDate();
-            
-            console.log('Event check:', {
-              title: event.title,
-              eventDate: eventDate.toISOString(),
-              isToday,
-              isCompleted: event.isCompleted
-            });
-            
-            return isToday;
+            if (event.isCompleted) return false;
+            if (!event.startTime) return false;
+            return new Date(event.startTime).toDateString() === today;
           })
           .sort((a: TimeIntent, b: TimeIntent) => {
-            // Sort by start time
-            const timeA = a.startTime ? new Date(a.startTime).getTime() : 0;
-            const timeB = b.startTime ? new Date(b.startTime).getTime() : 0;
-            return timeA - timeB;
+            if (!a.startTime || !b.startTime) return 0;
+            return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
           })
-          .slice(0, 3);
+          .slice(0, 3); // Show only first 3 events
         
-        console.log('📊 Employee TodaysEvents: Today\'s events to display:', todayEvents.length, todayEvents);
+        console.log('📊 TodaysEvents: Today\'s events to display:', todayEvents.length);
         setEvents(todayEvents);
       } else {
-        const errorText = await response.text();
-        console.error('❌ Employee TodaysEvents: Failed to fetch events:', response.status, errorText);
+        console.error('❌ TodaysEvents: Failed to fetch events:', response.status);
       }
     } catch (error) {
-      console.error('💥 Employee TodaysEvents: Error fetching today\'s events:', error);
+      console.error('💥 TodaysEvents: Error fetching events:', error);
     } finally {
       setLoading(false);
     }

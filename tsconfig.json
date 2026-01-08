@@ -35,7 +35,7 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-, "lib/mongoose.js", "models/Announcement.js", "models/OrgAnnouncement.js", "app/components/HRDownloadLogs", "app/api/user/theme/route.ts", "models/CalendarEvent.js", "app/api/team-members/route.ts", "app/api/sprints/route.js", "app/api/sprints/[id]/route.js", "app/api/projects/route.ts", "app/api/projects/[id]/route.js", "app/components/universal/WorkflowComponents", "app/utils/sendTicketNotification.ts"  ],
+, "lib/mongoose.js", "models/Announcement.js", "models/OrgAnnouncement.js", "app/components/HRDownloadLogs", "app/api/user/theme/route.ts", "models/CalendarEvent.js", "app/api/team-members/route.ts", "app/api/sprints/route.js", "app/api/sprints/[id]/route.js", "app/api/projects/route.ts", "app/api/projects/[id]/route.js", "app/components/universal/WorkflowComponents", "app/utils/sendTicketNotification.ts", "scripts/addSuperUser.js"  ],
   "exclude": [
     "node_modules"
   ]

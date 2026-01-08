@@ -1,4 +1,3 @@
-// app/(auth)/login/components/LoginFormSection.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -82,7 +81,11 @@ export default function LoginFormSection() {
         
         let route = '/employee/dashboard';
         
+        // Route based on role assigned by backend
         switch(data.user.role) {
+          case 'admin':
+            route = '/admin/dashboard';
+            break;
           case 'depthead.hr':
             route = '/hr-head/dashboard';
             break;

@@ -30,15 +30,15 @@ const roleLabels = {
 };
 
 export default function RecentTicketsList({ tickets }: RecentTicketsListProps) {
-  const { colors, cardCharacters } = useTheme();
+  const { colors } = useTheme();
 
   if (tickets.length === 0) {
     return (
-      <div className={`relative text-center py-8 rounded-xl border-2 overflow-hidden ${colors.cardBg} ${colors.border}`}>
+      <div className={`relative text-center py-8 rounded-xl border-2 overflow-hidden ${colors.cardBg} ${colors.borderSubtle}`}>
         <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
         <div className="relative">
-          <Ticket className={`h-12 w-12 ${colors.textMuted} mx-auto mb-3`} />
-          <p className={`${colors.textMuted} font-semibold`}>No tickets found</p>
+          <Ticket className={`h-12 w-12 ${colors.textMuted} mx-auto mb-2 opacity-50`} />
+          <p className={`${colors.textMuted} font-semibold text-sm`}>No recent tickets</p>
         </div>
       </div>
     );
@@ -46,11 +46,12 @@ export default function RecentTicketsList({ tickets }: RecentTicketsListProps) {
 
   return (
     <div className="space-y-3">
-      <h3 className={`text-lg font-bold ${colors.textPrimary} mb-4`}>
+      <h4 className={`text-sm font-bold ${colors.textPrimary} flex items-center gap-2`}>
+        <Ticket className={`h-4 w-4 ${colors.textAccent}`} />
         Recent Tickets
-      </h3>
+      </h4>
       <div 
-        className="space-y-3 max-h-96 overflow-y-auto pr-2"
+        className="space-y-2 max-h-80 overflow-y-auto pr-2"
         style={{
           scrollbarWidth: 'thin',
           scrollbarColor: `${colors.scrollbarThumb} ${colors.scrollbarTrack}`,
@@ -64,22 +65,23 @@ export default function RecentTicketsList({ tickets }: RecentTicketsListProps) {
           return (
             <div
               key={ticket.ticketNumber}
-              className={`group relative p-4 rounded-xl border-2 transition-all duration-200 overflow-hidden ${colors.cardBg} ${colors.border} hover:${colors.cardBgHover} hover:scale-[1.02] ${colors.shadowCard}`}
+              className={`group relative p-3 rounded-xl border-2 transition-all duration-200 overflow-hidden ${colors.cardBg} ${colors.borderSubtle} hover:${colors.borderHover} hover:${colors.shadowCard}`}
             >
               {/* Paper Texture */}
               <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
               
               {/* Hover Glow */}
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                   style={{ boxShadow: `inset 0 0 20px ${colors.glowPrimary}` }}>
-              </div>
+              <div 
+                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                style={{ boxShadow: `inset 0 0 14px ${colors.glowPrimary}` }}
+              />
               
               <div className="relative">
                 {/* Header */}
-                <div className="flex items-start justify-between mb-3">
+                <div className="flex items-start justify-between mb-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className={`font-bold ${colors.textAccent} text-sm`}>
+                      <span className={`font-black ${colors.textAccent} text-xs`}>
                         {ticket.ticketNumber}
                       </span>
                       <div
@@ -97,32 +99,33 @@ export default function RecentTicketsList({ tickets }: RecentTicketsListProps) {
                         {statusLabel}
                       </div>
                     </div>
-                    <p className={`font-bold ${colors.textPrimary} text-sm truncate`}>
+                    <p className={`font-bold ${colors.textPrimary} text-sm`}>
                       {ticket.functionalityName}
                     </p>
                   </div>
                 </div>
 
                 {/* Footer */}
-                <div className={`flex items-center justify-between mt-3 pt-3 border-t ${colors.border}`}>
+                <div className={`flex items-center justify-between mt-3 pt-3 border-t-2 ${colors.borderSubtle}`}>
                   <div className="flex items-center gap-2">
                     <RoleIcon className={`h-4 w-4 ${colors.textAccent}`} />
-                    <span className={`text-xs font-semibold ${colors.textMuted}`}>
+                    <span className={`text-xs font-bold ${colors.textSecondary}`}>
                       {roleLabels[ticket.role]}
                     </span>
                   </div>
                   
                   <div className="flex items-center gap-2">
                     <div
-                      className="px-2 py-1 rounded text-xs font-bold"
+                      className="px-2 py-0.5 rounded-lg text-xs font-bold"
                       style={{
                         backgroundColor: `${priorityColors[ticket.priority]}20`,
                         color: priorityColors[ticket.priority],
+                        border: `1px solid ${priorityColors[ticket.priority]}40`
                       }}
                     >
                       {ticket.priority.toUpperCase()}
                     </div>
-                    <span className={`text-xs ${colors.textMuted}`}>
+                    <span className={`text-xs font-semibold ${colors.textMuted}`}>
                       {new Date(ticket.createdAt).toLocaleDateString()}
                     </span>
                   </div>

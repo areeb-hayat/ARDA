@@ -9,9 +9,6 @@ export async function GET(request: NextRequest) {
     
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
-    const department = searchParams.get('department') || '';
-    const sortBy = searchParams.get('sortBy') || 'createdAt';
-    const order = searchParams.get('order') || 'desc';
 
     // Build query
     const query: any = {};
@@ -20,10 +17,6 @@ export async function GET(request: NextRequest) {
       // Uses text index: { name: 'text', description: 'text' }
       query.$text = { $search: search };
     }
-    
-    if (department) {
-      query.department = department;
-    }
 
     // Build sort
     const sortOptions: any = {};
@@ -31,24 +24,25 @@ export async function GET(request: NextRequest) {
       // Sort by text relevance when searching
       sortOptions.score = { $meta: 'textScore' };
     } else {
-      sortOptions[sortBy] = order === 'asc' ? 1 : -1;
+      // Default sort by most recent
+      sortOptions.createdAt = -1;
     }
 
     // Uses appropriate indexes:
     // - Text index if searching
-    // - { department: 1, createdAt: -1 } if filtering by department
+    // - { createdAt: -1 } for default sort
     const functionalities = await Functionality.find(query)
       .select('name description department formSchema workflow createdAt')
       .sort(sortOptions)
       .lean();
 
-    // Get unique departments - uses index on department
+    // Get unique departments that have functionalities
     const departments = await Functionality.distinct('department');
 
     return NextResponse.json({
       success: true,
       functionalities,
-      departments
+      departments: departments.sort()
     });
   } catch (error) {
     console.error('Error fetching functionalities:', error);

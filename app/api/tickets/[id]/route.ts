@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongoose';
 import Ticket from '@/models/Ticket';
+import Functionality from '@/models/Functionality';
+import SuperFunctionality from '@/models/SuperFunctionality';
 
 export async function GET(
   request: NextRequest,
@@ -14,10 +16,8 @@ export async function GET(
 
     console.log(`🔍 Fetching ticket: ${id}`);
 
-    // Find ticket by ID and populate functionality details
-    const ticket = await Ticket.findById(id)
-      .populate('functionality')
-      .lean();
+    // Find ticket by ID first without populate
+    const ticket = await Ticket.findById(id).lean();
 
     if (!ticket) {
       console.log(`❌ Ticket not found: ${id}`);
@@ -27,9 +27,71 @@ export async function GET(
       );
     }
 
-    console.log(`✅ Found ticket: ${ticket.ticketNumber}`);
+    // Determine if this is a super workflow ticket
+    const isSuper = ticket.department === 'Super Workflow';
+    
+    console.log(`📋 Ticket type: ${isSuper ? 'Super Workflow' : 'Regular'}`);
 
-    return NextResponse.json(ticket);
+    // Manually fetch the functionality from the appropriate collection
+    let functionality = null;
+    
+    if (isSuper) {
+      functionality = await SuperFunctionality.findById(ticket.functionality)
+        .select('+workflow +formSchema +accessControl')
+        .lean();
+      console.log(`🌟 Fetched SuperFunctionality:`, {
+        name: functionality?.name,
+        hasWorkflow: !!functionality?.workflow,
+        workflowNodes: functionality?.workflow?.nodes?.length,
+        workflowEdges: functionality?.workflow?.edges?.length
+      });
+    } else {
+      functionality = await Functionality.findById(ticket.functionality)
+        .select('+workflow +formSchema')
+        .lean();
+      console.log(`📋 Fetched Functionality:`, {
+        name: functionality?.name,
+        hasWorkflow: !!functionality?.workflow,
+        workflowNodes: functionality?.workflow?.nodes?.length,
+        workflowEdges: functionality?.workflow?.edges?.length
+      });
+    }
+
+    if (!functionality) {
+      console.error(`❌ Functionality not found for ticket: ${ticket.ticketNumber}`);
+      return NextResponse.json(
+        { error: 'Functionality not found for this ticket' },
+        { status: 404 }
+      );
+    }
+
+    if (!functionality.workflow) {
+      console.error(`❌ Workflow not found in functionality: ${functionality.name}`);
+      return NextResponse.json(
+        { error: 'Workflow not found in functionality' },
+        { status: 400 }
+      );
+    }
+
+    // Combine ticket with functionality
+    const ticketWithFunctionality = {
+      ...ticket,
+      functionality: {
+        _id: functionality._id,
+        name: functionality.name,
+        department: isSuper ? 'Super Workflow' : functionality.department,
+        workflow: functionality.workflow,
+        formSchema: functionality.formSchema
+      }
+    };
+
+    console.log(`✅ Found ticket: ${ticket.ticketNumber}`, {
+      hasFunctionality: !!ticketWithFunctionality.functionality,
+      hasWorkflow: !!ticketWithFunctionality.functionality?.workflow,
+      workflowNodeCount: ticketWithFunctionality.functionality?.workflow?.nodes?.length
+    });
+
+    return NextResponse.json(ticketWithFunctionality);
   } catch (error) {
     console.error('❌ Error fetching ticket:', error);
     return NextResponse.json(

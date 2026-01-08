@@ -125,8 +125,8 @@ export default function MyTicketsDonut({ onClick }: MyTicketsDonutProps) {
     }
   };
 
-  const size = 180;
-  const strokeWidth = 28;
+  const size = 200;
+  const strokeWidth = 35;
   const center = size / 2;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -135,25 +135,25 @@ export default function MyTicketsDonut({ onClick }: MyTicketsDonutProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full py-12">
+      <div className="flex items-center justify-center h-full">
         <div className={`w-8 h-8 border-2 ${colors.textAccent} border-t-transparent rounded-full animate-spin`}></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
+    <div className="h-full flex flex-col">
+      <div className="flex items-center gap-3 mb-4">
         <div className={`w-1.5 h-6 bg-gradient-to-b ${colors.buttonPrimary} rounded-full`}></div>
         <h3 className={`text-xl font-black ${colors.textPrimary}`}>
-          Tickets Overview
+          My Tickets
         </h3>
       </div>
 
       {total === 0 ? (
         <div 
           onClick={onClick}
-          className={`group relative cursor-pointer overflow-hidden rounded-lg transition-all duration-300 ${colors.borderHover}`}
+          className={`flex-1 group relative cursor-pointer overflow-hidden rounded-lg transition-all duration-300 ${colors.borderHover} flex items-center justify-center`}
         >
           {/* Paper Texture */}
           <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
@@ -164,20 +164,20 @@ export default function MyTicketsDonut({ onClick }: MyTicketsDonutProps) {
             style={{ boxShadow: `inset 0 0 14px ${colors.glowPrimary}, inset 0 0 28px ${colors.glowPrimary}` }}
           ></div>
           
-          <div className="relative z-10 p-8 text-center space-y-3">
-            <Ticket className={`w-16 h-16 ${colors.textMuted} mx-auto opacity-40`} />
-            <p className={`${colors.textPrimary} text-lg font-bold`}>
+          <div className="relative z-10 text-center space-y-3 p-6">
+            <Ticket className={`w-12 h-12 ${colors.textMuted} mx-auto opacity-40`} />
+            <p className={`${colors.textPrimary} text-base font-bold`}>
               No tickets assigned
             </p>
-            <p className={`${colors.textSecondary} text-sm`}>
-              You have no pending tickets at the moment
+            <p className={`${colors.textSecondary} text-xs`}>
+              You have no pending tickets
             </p>
           </div>
         </div>
       ) : (
         <div 
           onClick={onClick}
-          className={`group relative cursor-pointer overflow-hidden rounded-lg transition-all duration-300 ${colors.shadowCard} hover:${colors.shadowHover} ${colors.borderHover}`}
+          className={`flex-1 group relative cursor-pointer overflow-hidden rounded-lg transition-all duration-300 ${colors.borderHover}`}
         >
           {/* Paper Texture */}
           <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
@@ -188,79 +188,71 @@ export default function MyTicketsDonut({ onClick }: MyTicketsDonutProps) {
             style={{ boxShadow: `inset 0 0 14px ${colors.glowPrimary}, inset 0 0 28px ${colors.glowPrimary}` }}
           ></div>
 
-          <div className="relative z-10 p-4">
-            {/* Donut Chart and Legend - Side by Side */}
-            <div className="flex items-center gap-6">
-              {/* Donut Chart */}
-              <div className="flex-shrink-0 relative" style={{ width: size, height: size }}>
-                <svg width={size} height={size} className="transform -rotate-90">
-                  {/* Background circle */}
-                  <circle
-                    cx={center}
-                    cy={center}
-                    r={radius}
-                    fill="none"
-                    stroke={theme === 'dark' ? 'rgba(100, 181, 246, 0.1)' : 'rgba(33, 150, 243, 0.1)'}
-                    strokeWidth={strokeWidth}
-                  />
+          <div className="relative z-10 h-full flex flex-col items-center justify-center p-4">
+            {/* Donut Chart - Centered */}
+            <div className="flex-shrink-0 relative mb-4" style={{ width: size, height: size }}>
+              <svg width={size} height={size} className="transform -rotate-90">
+                {/* Background circle */}
+                <circle
+                  cx={center}
+                  cy={center}
+                  r={radius}
+                  fill="none"
+                  stroke={theme === 'dark' ? 'rgba(100, 181, 246, 0.1)' : 'rgba(33, 150, 243, 0.1)'}
+                  strokeWidth={strokeWidth}
+                />
 
-                  {/* Status arcs */}
-                  {statusData.map((item) => {
-                    const startAngle = (cumulativePercentage / 100) * circumference;
-                    const arcLength = (item.percentage / 100) * circumference;
-                    cumulativePercentage += item.percentage;
+                {/* Status arcs */}
+                {statusData.map((item) => {
+                  const startAngle = (cumulativePercentage / 100) * circumference;
+                  const arcLength = (item.percentage / 100) * circumference;
+                  cumulativePercentage += item.percentage;
 
-                    return (
-                      <circle
-                        key={item.status}
-                        cx={center}
-                        cy={center}
-                        r={radius}
-                        fill="none"
-                        stroke={item.color}
-                        strokeWidth={strokeWidth}
-                        strokeDasharray={`${arcLength} ${circumference}`}
-                        strokeDashoffset={-startAngle}
-                        className="transition-all duration-500"
-                        style={{
-                          filter: `drop-shadow(0 0 6px ${item.color}40)`,
-                        }}
-                      />
-                    );
-                  })}
-                </svg>
+                  return (
+                    <circle
+                      key={item.status}
+                      cx={center}
+                      cy={center}
+                      r={radius}
+                      fill="none"
+                      stroke={item.color}
+                      strokeWidth={strokeWidth}
+                      strokeDasharray={`${arcLength} ${circumference}`}
+                      strokeDashoffset={-startAngle}
+                      className="transition-all duration-500"
+                      style={{
+                        filter: `drop-shadow(0 0 6px ${item.color}40)`,
+                      }}
+                    />
+                  );
+                })}
+              </svg>
 
-                {/* Center text */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <div className={`text-3xl font-black ${colors.textAccent}`}>{total}</div>
-                  <div className={`text-xs font-bold ${colors.textMuted} mt-1`}>Total</div>
-                </div>
+              {/* Center text */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <div className={`text-4xl font-black ${colors.textAccent}`}>{total}</div>
+                <div className={`text-xs font-bold ${colors.textMuted} mt-1`}>Total</div>
               </div>
+            </div>
 
-              {/* Legend - Right Side */}
-              <div className="flex-1 space-y-2">
-                {statusData.map((item) => (
-                  <div key={item.status} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-3 h-3 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: item.color }}
-                      ></div>
-                      <span className={`text-sm font-semibold ${colors.textPrimary}`}>
-                        {item.status}
-                      </span>
+            {/* Legend - Below Chart */}
+            <div className="w-full grid grid-cols-2 gap-2">
+              {statusData.map((item) => (
+                <div key={item.status} className="flex items-center gap-2">
+                  <div
+                    className="w-3 h-3 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: item.color }}
+                  ></div>
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-xs font-bold ${colors.textPrimary} truncate`}>
+                      {item.status}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-sm font-bold ${colors.textPrimary}`}>
-                        {item.count}
-                      </span>
-                      <span className={`text-xs font-semibold ${colors.textMuted}`}>
-                        ({item.percentage.toFixed(1)}%)
-                      </span>
+                    <div className={`text-xs font-semibold ${colors.textMuted}`}>
+                      {item.count} <span className="text-[10px]">({item.percentage.toFixed(0)}%)</span>
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

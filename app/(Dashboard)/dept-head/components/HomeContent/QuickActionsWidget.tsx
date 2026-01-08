@@ -47,7 +47,7 @@ export default function QuickActionsWidget({ onNavigate }: QuickActionsWidgetPro
     },
     {
       id: 'team',
-      label: 'My Team',
+      label: 'My Department',
       icon: <Users className="h-4 w-4" />,
       section: 'team'
     },

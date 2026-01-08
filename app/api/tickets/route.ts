@@ -1,8 +1,9 @@
-// ===== app/api/tickets/route.ts (FIXED ATTACHMENT HANDLING) =====
+// ===== app/api/tickets/route.ts (UPDATED TO SUPPORT SUPER FUNCTIONALITIES) =====
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongoose';
 import Ticket from '@/models/Ticket';
 import Functionality from '@/models/Functionality';
+import SuperFunctionality from '@/models/SuperFunctionality';
 import FormData from '@/models/FormData';
 import { sendTicketAssignmentEmail } from '@/app/utils/sendTicketNotification';
 import { saveAttachment } from '@/app/utils/fileUpload';
@@ -95,16 +96,17 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create new ticket
+// POST - Create new ticket (supports both Functionality and SuperFunctionality)
 export async function POST(request: NextRequest) {
   try {
     await dbConnect();
     
     const body = await request.json();
-    const { functionalityId, formData, raisedBy } = body;
+    const { functionalityId, formData, raisedBy, isSuper } = body;
 
     console.log('🎫 Creating ticket with data:', {
       functionalityId,
+      isSuper,
       raisedBy,
       formDataKeys: Object.keys(formData || {}),
       attachments: formData?.['default-attachments']
@@ -125,16 +127,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const functionality = await Functionality.findById(functionalityId);
+    // Fetch functionality based on type
+    let functionality: any;
+    let department: string;
+    
+    if (isSuper) {
+      console.log('🌟 Fetching SuperFunctionality...');
+      functionality = await SuperFunctionality.findById(functionalityId);
+      department = 'Super Workflow'; // Super workflows are cross-departmental
+    } else {
+      console.log('📋 Fetching regular Functionality...');
+      functionality = await Functionality.findById(functionalityId);
+      department = functionality?.department;
+    }
     
     if (!functionality) {
       return NextResponse.json(
-        { error: 'Functionality not found' },
+        { error: `${isSuper ? 'Super functionality' : 'Functionality'} not found` },
         { status: 404 }
       );
     }
 
-    console.log('✅ Found functionality:', functionality.name);
+    console.log('✅ Found functionality:', functionality.name, isSuper ? '(Super)' : '(Regular)');
 
     // Get workflow
     const workflow = functionality.workflow;
@@ -260,7 +274,7 @@ export async function POST(request: NextRequest) {
     const ticketNumber = `TKT-${year}-${String(count + 1).padStart(6, '0')}`;
 
     // ============================================
-    // 💾 SAVE ATTACHMENTS TO DISK (FIXED)
+    // 💾 SAVE ATTACHMENTS TO DISK
     // ============================================
     if (formData['default-attachments']) {
       try {
@@ -343,7 +357,7 @@ export async function POST(request: NextRequest) {
       ticketNumber,
       functionalityName: functionality.name,
       functionality: functionalityId,
-      department: functionality.department,
+      department,
       raisedBy: {
         userId: String(raisedBy.userId),
         name: raisedBy.name,

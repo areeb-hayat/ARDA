@@ -1,7 +1,8 @@
-// ===== app/api/announcements/route.ts =====
+// app/api/announcements/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongoose';
 import Announcement from '@/models/Announcement';
+import { saveAnnouncementAttachment, deleteAnnouncementAttachment, getAnnouncementAttachmentUrl } from '@/app/utils/fileUpload';
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,15 +21,14 @@ export async function GET(request: NextRequest) {
     const now = new Date();
 
     // Uses compound index: { isDeleted: 1, department: 1, createdAt: -1 }
-    // and { isDeleted: 1, pinned: -1, urgent: -1, createdAt: -1 }
     const allAnnouncements = await Announcement.find({
       department,
-      isDeleted: { $ne: true } // Filter out deleted announcements
+      isDeleted: { $ne: true }
     })
     .sort({ pinned: -1, urgent: -1, createdAt: -1 })
     .lean();
 
-    // Filter out expired announcements in-memory (more efficient than adding to query)
+    // Filter out expired announcements in-memory
     const activeAnnouncements = allAnnouncements.filter(announcement => {
       if (!announcement.expirationDate) return true;
       
@@ -36,9 +36,18 @@ export async function GET(request: NextRequest) {
       return now < expirationDate;
     });
 
+    // Convert file paths to URLs for attachments
+    const announcementsWithUrls = activeAnnouncements.map(announcement => ({
+      ...announcement,
+      attachments: announcement.attachments?.map((att: any) => ({
+        ...att,
+        url: getAnnouncementAttachmentUrl(att.url) // Convert file path to URL
+      }))
+    }));
+
     return NextResponse.json({
       success: true,
-      announcements: activeAnnouncements
+      announcements: announcementsWithUrls
     });
 
   } catch (error: any) {
@@ -74,13 +83,40 @@ export async function POST(request: NextRequest) {
       expirationDateTime = date;
     }
 
+    // Process attachments - save files and store paths
+    const savedAttachments = [];
+    if (attachments && attachments.length > 0) {
+      for (const attachment of attachments) {
+        try {
+          // Save the file using the fileUpload utility
+          const savedFile = saveAnnouncementAttachment(department, {
+            name: attachment.name,
+            data: attachment.url, // This contains the base64 data
+            type: attachment.type === 'image' ? 'image/jpeg' : 'application/pdf', // You may need to pass actual mime type
+            size: attachment.size
+          });
+
+          savedAttachments.push({
+            name: savedFile.name,
+            url: savedFile.path, // Store the file system path in DB
+            type: savedFile.type,
+            size: savedFile.size,
+            uploadedAt: new Date()
+          });
+        } catch (error) {
+          console.error('Error saving attachment:', error);
+          // Continue with other attachments
+        }
+      }
+    }
+
     const announcementData = {
       department,
       title,
       content,
-      color: color || '#0000FF', // Use "color" to match old API
+      color: color || '#0000FF',
       expirationDate: expirationDateTime,
-      attachments: attachments || [],
+      attachments: savedAttachments,
     };
 
     console.log('📝 Creating announcement with data:', JSON.stringify(announcementData, null, 2));
@@ -89,9 +125,18 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Announcement created successfully:', newAnnouncement._id);
 
+    // Convert file paths to URLs for the response
+    const responseAnnouncement = {
+      ...newAnnouncement.toObject(),
+      attachments: newAnnouncement.attachments?.map((att: any) => ({
+        ...att,
+        url: getAnnouncementAttachmentUrl(att.url)
+      }))
+    };
+
     return NextResponse.json({
       success: true,
-      announcement: newAnnouncement
+      announcement: responseAnnouncement
     });
 
   } catch (error: any) {
@@ -129,7 +174,53 @@ export async function PATCH(request: NextRequest) {
       updateFields.edited = true;
     }
     if (attachments !== undefined) {
-      updateFields.attachments = attachments;
+      // Get the current announcement to compare attachments
+      const currentAnnouncement = await Announcement.findById(id);
+      
+      if (currentAnnouncement) {
+        // Find attachments that were removed
+        const currentAttachmentUrls = currentAnnouncement.attachments?.map((att: any) => att.url) || [];
+        const newAttachmentUrls = attachments.map((att: any) => att.url || att.path);
+        
+        // Delete removed attachments from file system
+        for (const oldUrl of currentAttachmentUrls) {
+          if (!newAttachmentUrls.includes(oldUrl)) {
+            deleteAnnouncementAttachment(oldUrl);
+          }
+        }
+
+        // Process new attachments that need to be saved
+        const processedAttachments = [];
+        for (const attachment of attachments) {
+          // If attachment has a path already (existing attachment), keep it as is
+          if (attachment.url && !attachment.url.startsWith('data:')) {
+            processedAttachments.push(attachment);
+          } else {
+            // New attachment that needs to be saved
+            try {
+              const savedFile = saveAnnouncementAttachment(currentAnnouncement.department, {
+                name: attachment.name,
+                data: attachment.url,
+                type: attachment.type === 'image' ? 'image/jpeg' : 'application/pdf',
+                size: attachment.size
+              });
+
+              processedAttachments.push({
+                name: savedFile.name,
+                url: savedFile.path,
+                type: savedFile.type,
+                size: savedFile.size,
+                uploadedAt: new Date()
+              });
+            } catch (error) {
+              console.error('Error saving attachment during update:', error);
+            }
+          }
+        }
+
+        updateFields.attachments = processedAttachments;
+      }
+      
       updateFields.edited = true;
     }
     if (pinned !== undefined) {
@@ -145,6 +236,14 @@ export async function PATCH(request: NextRequest) {
       updateFields.isDeleted = isDeleted;
       if (isDeleted) {
         updateFields.deletedAt = new Date();
+        
+        // Delete all attachments when announcement is deleted
+        const announcement = await Announcement.findById(id);
+        if (announcement && announcement.attachments) {
+          for (const attachment of announcement.attachments) {
+            deleteAnnouncementAttachment(attachment.url);
+          }
+        }
       }
     }
     if (expirationDate !== undefined) {
@@ -170,10 +269,19 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    // Convert file paths to URLs for the response
+    const responseAnnouncement = {
+      ...result.toObject(),
+      attachments: result.attachments?.map((att: any) => ({
+        ...att,
+        url: getAnnouncementAttachmentUrl(att.url)
+      }))
+    };
+
     return NextResponse.json({
       success: true,
       message: 'Announcement updated successfully',
-      announcement: result
+      announcement: responseAnnouncement
     });
 
   } catch (error: any) {
@@ -199,6 +307,23 @@ export async function DELETE(request: NextRequest) {
 
     await dbConnect();
 
+    // Get the announcement to delete attachments
+    const announcement = await Announcement.findById(id);
+    
+    if (!announcement) {
+      return NextResponse.json(
+        { error: 'Announcement not found' },
+        { status: 404 }
+      );
+    }
+
+    // Delete all attachments from file system
+    if (announcement.attachments && announcement.attachments.length > 0) {
+      for (const attachment of announcement.attachments) {
+        deleteAnnouncementAttachment(attachment.url);
+      }
+    }
+
     // Soft delete by setting isDeleted flag
     const result = await Announcement.findByIdAndUpdate(
       id,
@@ -210,13 +335,6 @@ export async function DELETE(request: NextRequest) {
       },
       { new: true }
     );
-
-    if (!result) {
-      return NextResponse.json(
-        { error: 'Announcement not found' },
-        { status: 404 }
-      );
-    }
 
     return NextResponse.json({
       success: true,

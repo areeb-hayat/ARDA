@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { CalendarDays, Clock, ArrowRight, MapPin, Users } from 'lucide-react';
+import { CalendarDays, Clock, ArrowRight, MapPin, Users, Calendar } from 'lucide-react';
 import { useTheme, useCardCharacter } from '@/app/context/ThemeContext';
 
 interface TimeIntent {
@@ -50,97 +50,56 @@ export default function UpcomingEventsWidget({ onViewAll }: UpcomingEventsWidget
     try {
       const userData = localStorage.getItem('user');
       if (!userData) {
-        console.log('❌ Employee UpcomingEvents: No user data in localStorage');
+        console.log('❌ UpcomingEvents: No user data in localStorage');
         setLoading(false);
         return;
       }
       
       const user = JSON.parse(userData);
-      console.log('👤 Employee UpcomingEvents: Full user object:', user);
-      
-      // Use _id as userId (MongoDB ObjectId)
       const userId = user._id;
       
       if (!userId) {
-        console.error('❌ Employee UpcomingEvents: No user ID found in user object:', user);
+        console.error('❌ UpcomingEvents: No user ID found');
         setLoading(false);
         return;
       }
       
-      console.log('📅 Employee UpcomingEvents: === FETCH START ===');
-      console.log('👤 User ID:', userId);
-      
-      const now = new Date();
-      
-      // Get a range from tomorrow to 10 days in the future
-      const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-      const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 11);
+      console.log('📅 UpcomingEvents: Fetching events for userId:', userId);
 
-      console.log('📅 Employee UpcomingEvents: Date range:', {
-        start: startDate.toISOString(),
-        end: endDate.toISOString()
-      });
-
-      const params = new URLSearchParams({
-        userId: userId,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-      });
-
-      const apiUrl = `/api/calendar/events?${params}`;
-      console.log('🌐 Employee UpcomingEvents: API URL:', apiUrl);
-
-      const response = await fetch(apiUrl);
-      
-      console.log('📡 Employee UpcomingEvents: Response status:', response.status);
+      const response = await fetch(`/api/calendar/events?userId=${userId}`);
       
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Employee UpcomingEvents: API Response:', {
-          totalEvents: data.events?.length || 0,
-          events: data.events
-        });
+        console.log('✅ UpcomingEvents: Fetched events:', data.events?.length || 0);
         
-        // Filter to upcoming events (after today) and not completed
+        // Filter to upcoming events (next 7 days, excluding today) using same logic as CalendarSidebar
         const today = new Date();
-        today.setHours(23, 59, 59, 999);
-        
+        today.setHours(0, 0, 0, 0);
+        const nextWeek = new Date(today);
+        nextWeek.setDate(nextWeek.getDate() + 7);
+
         const upcomingEvents = (data.events || [])
           .filter((event: TimeIntent) => {
-            if (event.isCompleted) {
-              console.log('Filtering out completed event:', event.title);
-              return false;
-            }
+            if (event.isCompleted) return false;
+            if (!event.startTime) return false;
             
-            const eventDate = event.startTime ? new Date(event.startTime) : null;
-            const isUpcoming = eventDate && eventDate > today;
-            
-            console.log('Event check:', {
-              title: event.title,
-              eventDate: eventDate?.toISOString(),
-              isUpcoming,
-              isCompleted: event.isCompleted
-            });
-            
-            return isUpcoming;
+            const eventDate = new Date(event.startTime);
+            eventDate.setHours(0, 0, 0, 0);
+            return eventDate > today && eventDate <= nextWeek;
           })
           .sort((a: TimeIntent, b: TimeIntent) => {
-            const timeA = a.startTime ? new Date(a.startTime).getTime() : 0;
-            const timeB = b.startTime ? new Date(b.startTime).getTime() : 0;
-            return timeA - timeB;
+            if (!a.startTime || !b.startTime) return 0;
+            return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
           })
-          .slice(0, 3);
+          .slice(0, 3); // Show only first 3 events
         
-        console.log('📊 Employee UpcomingEvents: Upcoming events to display:', upcomingEvents.length, upcomingEvents);
+        console.log('📊 UpcomingEvents: Upcoming events to display:', upcomingEvents.length);
         setEvents(upcomingEvents);
       } else {
-        const errorText = await response.text();
-        console.error('❌ Employee UpcomingEvents: API request failed:', response.status, errorText);
+        console.error('❌ UpcomingEvents: Failed to fetch events:', response.status);
       }
-      
-      console.log('📅 Employee UpcomingEvents: === FETCH END ===');
     } catch (error) {
-      console.error('💥 Employee UpcomingEvents: Error fetching upcoming events:', error);
+      console.error('💥 UpcomingEvents: Error fetching events:', error);
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,4 @@
-// ===== models/OrgAnnouncement.js (FIXED - No Duplicates) =====
+// models/OrgAnnouncement.js
 import mongoose from 'mongoose';
 
 const AttachmentSchema = new mongoose.Schema({
@@ -66,6 +66,10 @@ const OrgAnnouncementSchema = new mongoose.Schema({
   deletedAt: {
     type: Date,
     default: null,
+  },
+  targetAudience: {
+    type: String,
+    default: 'organization',
   }
 });
 
@@ -82,6 +86,9 @@ OrgAnnouncementSchema.index({ author: 1, createdAt: -1 });
 
 // Index for expiration management
 OrgAnnouncementSchema.index({ expirationDate: 1, isDeleted: 1 });
+
+// Index for target audience filtering (NEW)
+OrgAnnouncementSchema.index({ targetAudience: 1, isDeleted: 1, createdAt: -1 });
 
 // Text search index for searching titles and content
 OrgAnnouncementSchema.index({ title: 'text', content: 'text' });

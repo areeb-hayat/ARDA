@@ -100,7 +100,7 @@ export default function EmployeeDashboard() {
         );
       
       case 'org-announcements':
-        return <OrgAnnouncementsPage onBack={() => setActiveSection('home')} isHREmployee={true} />;
+        return <OrgAnnouncementsPage onBack={() => setActiveSection('home')} isHREmployee={true} userDepartment={'HR'}/>;
       
       case 'manage-users':
         return <ManageUsersContent initialFilter={manageUsersFilter} />;

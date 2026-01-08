@@ -99,7 +99,7 @@ export default function EmployeeDashboard() {
         );
       
       case 'org-announcements':
-        return <OrgAnnouncementsPage onBack={() => setActiveSection('home')} />;
+        return <OrgAnnouncementsPage onBack={() => setActiveSection('home')} isHREmployee={false} userDepartment={user.department}/>;;
       
       case 'policies':
         return <PoliciesContent />;

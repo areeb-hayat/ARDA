@@ -1,11 +1,12 @@
 // app/api/tickets/[id]/actions/route.ts
-// COMPLETE VERSION with form_group support
-// VERSION: 2024-12-24-WITH-FORM-GROUP
+// COMPLETE VERSION with form_group support and SuperFunctionality support
+// VERSION: 2025-01-07-WITH-SUPER-WORKFLOW
 
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongoose';
 import Ticket from '@/models/Ticket';
 import Functionality from '@/models/Functionality';
+import SuperFunctionality from '@/models/SuperFunctionality';
 import FormData from '@/models/FormData';
 
 function isFirstEmployeeNode(nodeId: string, workflow: any): boolean {
@@ -30,7 +31,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  console.log('\n🎯🎯🎯 ACTIONS ROUTE - VERSION 2025-12-24-WITH-FORM-GROUP 🎯🎯🎯\n');
+  console.log('\n🎯🎯🎯 ACTIONS ROUTE - VERSION 2025-01-07-WITH-SUPER-WORKFLOW 🎯🎯🎯\n');
   
   try {
     await dbConnect();
@@ -82,7 +83,8 @@ export async function POST(
 
     console.log(`Performed by: ${performedBy.name} (${performedBy.userId})`);
 
-    const ticket = await Ticket.findById(id).populate('functionality');
+    // Find ticket first
+    const ticket = await Ticket.findById(id);
     
     if (!ticket) {
       return NextResponse.json(
@@ -91,7 +93,20 @@ export async function POST(
       );
     }
 
-    const functionality = ticket.functionality as any;
+    // Determine if this is a super workflow ticket
+    const isSuper = ticket.department === 'Super Workflow';
+    console.log(`🌟 Ticket type: ${isSuper ? 'Super Workflow' : 'Regular'}`);
+
+    // Fetch the appropriate functionality
+    let functionality: any;
+    if (isSuper) {
+      functionality = await SuperFunctionality.findById(ticket.functionality);
+      console.log(`🌟 Loaded SuperFunctionality: ${functionality?.name}`);
+    } else {
+      functionality = await Functionality.findById(ticket.functionality);
+      console.log(`📋 Loaded Functionality: ${functionality?.name}`);
+    }
+
     if (!functionality || !functionality.workflow) {
       return NextResponse.json(
         { error: 'Functionality workflow not found' },

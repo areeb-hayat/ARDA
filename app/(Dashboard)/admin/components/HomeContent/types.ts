@@ -1,49 +1,49 @@
-// app/(Dashboard)/hr-head/components/HomeContent/types.ts
+// app/components/ManageUsersContent/types.ts
 
-export interface Attachment {
-  name: string;
-  url: string;
-  type: 'image' | 'document';
-  size: number;
-  uploadedAt: string;
-}
-
-export interface Comment {
-  _id?: string;
-  author: string;
-  text: string;
-  createdAt: string;
-  pinned?: boolean;
-}
-
-export interface Announcement {
+export interface User {
   _id: string;
-  title: string;
-  content: string;
-  color: string;
-  comments: Comment[];
-  attachments?: Attachment[];
-  pinned?: boolean;
-  urgent?: boolean;
-  edited?: boolean;
-  createdAt: string;
-  updatedAt?: string;
-  department?: string;
-}
-
-export interface OrgAnnouncement {
-  _id: string;
-  title: string;
-  content: string;
-  author: string;
-  createdAt: string;
-  pinned?: boolean;
-  edited?: boolean;
-  expirationDate?: string;
-  borderColor?: string;
-  attachments?: Attachment[];
-}
-
-export interface HRHeadHomeContentProps {
+  username: string;
+  password?: string;
   department: string;
+  title: string;
+  isDeptHead: boolean;
+  isApproved: boolean;
+  basicDetails: {
+    name: string;
+    title: string;
+  };
+  contactInformation: {
+    email: string;
+    contactNumber: string;
+  };
+  employeeNumber: string;
+  status: string;
+}
+
+export interface NewUserForm {
+  username: string;
+  password: string;
+  department: string;
+  title: string;
+  isDeptHead: boolean;
+  isApproved: boolean;
+  name: string;
+  email: string;
+  contactNumber: string;
+  employeeNumber: string;
+}
+
+export interface EditUserForm {
+  department: string;
+  title: string;
+  isDeptHead: boolean;
+  isApproved: boolean;
+}
+
+export interface UserFilters {
+  searchTerm: string;
+  departmentFilter: string;
+  approvalFilter: 'all' | 'approved' | 'unapproved';
+  roleFilter: 'all' | 'depthead' | 'employee';
+  sortBy: 'name' | 'department' | 'employeeNumber' | 'status';
 }

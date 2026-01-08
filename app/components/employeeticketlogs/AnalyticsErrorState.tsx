@@ -15,30 +15,33 @@ export default function AnalyticsErrorState({ message, onRetry }: AnalyticsError
   const urgentChar = cardCharacters.urgent;
 
   return (
-    <div className={`relative text-center py-12 rounded-xl border-2 overflow-hidden ${colors.cardBg} ${urgentChar.border}`}>
+    <div className={`relative text-center py-16 rounded-xl border-2 overflow-hidden bg-gradient-to-br ${urgentChar.bg} ${urgentChar.border}`}>
       <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
       
       <div className="relative">
-        <AlertCircle className={`h-16 w-16 ${urgentChar.iconColor} mx-auto mb-4`} />
-        <h3 className={`text-lg font-bold ${colors.textPrimary} mb-2`}>
+        <div className={`w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center border-2 ${urgentChar.border}`}>
+          <AlertCircle className={`h-10 w-10 ${urgentChar.iconColor}`} />
+        </div>
+        <h3 className={`text-xl font-black ${colors.textPrimary} mb-2`}>
           Failed to Load Analytics
         </h3>
-        <p className={`${colors.textMuted} mb-6 max-w-md mx-auto`}>
+        <p className={`${colors.textSecondary} text-sm mb-6 max-w-md mx-auto`}>
           {message}
         </p>
         <button
           onClick={onRetry}
-          className={`group relative px-6 py-2 rounded-xl font-bold transition-all overflow-hidden flex items-center gap-2 mx-auto ${colors.buttonPrimary} ${colors.buttonPrimaryText} ${colors.shadowCard} hover:${colors.shadowHover}`}
+          className={`group relative px-6 py-3 rounded-xl font-bold transition-all overflow-hidden flex items-center gap-2 mx-auto border-2 bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText} ${colors.shadowCard} hover:${colors.shadowHover}`}
         >
           {/* Paper Texture Layer */}
           <div className={`absolute inset-0 opacity-[0.02] ${colors.paperTexture}`}></div>
           
           {/* Internal Glow Layer */}
-          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-               style={{ boxShadow: `inset 0 0 20px var(--glow-primary)` }}>
-          </div>
+          <div 
+            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+            style={{ boxShadow: `inset 0 0 14px ${colors.glowPrimary}` }}
+          />
           
-          <RefreshCw className="h-4 w-4 relative z-10 group-hover:rotate-180 transition-all duration-300" />
+          <RefreshCw className="h-5 w-5 relative z-10 group-hover:rotate-180 transition-all duration-500" />
           <span className="relative z-10">Retry</span>
         </button>
       </div>

@@ -1,8 +1,8 @@
 // app/components/universal/OrgAnnouncementsComponents/OrgAnnouncementsWidget.tsx
 'use client';
 
-import React from 'react';
-import { Globe, Pin, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Globe, Pin, ArrowRight, AlertCircle } from 'lucide-react';
 import { useTheme } from '@/app/context/ThemeContext';
 
 interface OrgAnnouncement {
@@ -15,30 +15,57 @@ interface OrgAnnouncement {
   edited?: boolean;
   expirationDate?: string;
   borderColor?: string;
+  targetAudience?: string;
 }
 
 interface OrgAnnouncementsWidgetProps {
-  announcements: OrgAnnouncement[];
   onAnnouncementClick: () => void;
+  userDepartment?: string;
 }
 
 export default function OrgAnnouncementsWidget({ 
-  announcements, 
-  onAnnouncementClick 
+  onAnnouncementClick,
+  userDepartment = ''
 }: OrgAnnouncementsWidgetProps) {
-  const { theme, colors, cardCharacters } = useTheme();
+  const { theme, colors } = useTheme();
+  const [announcements, setAnnouncements] = useState<OrgAnnouncement[]>([]);
+  const [loading, setLoading] = useState(true);
   
   // Use emerald/teal colors for org announcements (professional, corporate)
   const orgColor = theme === 'dark' ? '#10B981' : '#059669'; // Emerald green
   const orgColorLight = theme === 'dark' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(5, 150, 105, 0.15)';
   const orgBorder = theme === 'dark' ? 'border-emerald-500/60' : 'border-emerald-600';
+  const iconColor = theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600';
+  const accentColor = theme === 'dark' ? 'text-emerald-400' : 'text-emerald-700';
 
   // Theme-aware text colors
   const textColor = theme === 'dark' ? 'text-white' : 'text-gray-900';
   const textSecondaryColor = theme === 'dark' ? 'text-white/80' : 'text-gray-700';
   const textMutedColor = theme === 'dark' ? 'text-white/60' : 'text-gray-500';
-  const iconColor = theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600';
-  const accentColor = theme === 'dark' ? 'text-emerald-400' : 'text-emerald-700';
+
+  useEffect(() => {
+    console.log('OrgAnnouncementsWidget: userDepartment =', userDepartment);
+    fetchAnnouncements();
+  }, [userDepartment]);
+
+  const fetchAnnouncements = async () => {
+    try {
+      const url = `/api/org-announcements?department=${userDepartment}`;
+      console.log('OrgAnnouncementsWidget: Fetching from', url);
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('OrgAnnouncementsWidget: Received', data.announcements?.length || 0, 'announcements');
+        setAnnouncements(data.announcements || []);
+      } else {
+        console.error('OrgAnnouncementsWidget: Failed to fetch, status:', response.status);
+      }
+    } catch (error) {
+      console.error('Error fetching org announcements:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Show only 3 latest announcements
   const latestAnnouncements = announcements
@@ -52,6 +79,24 @@ export default function OrgAnnouncementsWidget({
   const truncateText = (text: string, maxLength: number) => {
     return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
   };
+
+  if (loading) {
+    return (
+      <div className="h-full flex flex-col">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Globe className={`h-5 w-5 ${iconColor}`} />
+            <h3 className={`text-lg font-black ${colors.textPrimary}`}>
+              Organization
+            </h3>
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className={`w-6 h-6 border-2 ${orgBorder} border-t-transparent rounded-full animate-spin`}></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col">
@@ -92,13 +137,17 @@ export default function OrgAnnouncementsWidget({
           </div>
         ) : (
           latestAnnouncements.map((announcement) => {
+            const isDepartmentSpecific = announcement.targetAudience && announcement.targetAudience !== 'organization';
+            
             return (
               <button
                 key={announcement._id}
                 onClick={onAnnouncementClick}
-                className={`announcement-card w-full text-left p-3 rounded-lg transition-all duration-300 cursor-pointer border-2 ${orgBorder} group relative overflow-hidden`}
+                className={`announcement-card w-full text-left p-3 rounded-lg transition-all duration-300 cursor-pointer border-2 group relative overflow-hidden`}
                 style={{
-                  backgroundColor: orgColorLight
+                  backgroundColor: orgColorLight,
+                  borderColor: orgColor,
+                  ['--glow-color' as any]: orgColor
                 }}
               >
                 {/* Paper Texture */}
@@ -119,13 +168,19 @@ export default function OrgAnnouncementsWidget({
                       {announcement.title}
                     </h4>
                     <div className="flex items-center gap-1 flex-shrink-0">
-                      {announcement.pinned && (
-                        <Pin className={`h-3 w-3 ${iconColor}`} fill="currentColor" />
+                      {isDepartmentSpecific && (
+                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-black"
+                          style={{
+                            backgroundColor: orgColor,
+                            color: 'white'
+                          }}
+                        >
+                          <AlertCircle className="h-2.5 w-2.5" />
+                          {announcement.targetAudience}
+                        </div>
                       )}
-                      {announcement.edited && (
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold bg-gradient-to-br ${colors.glassBg} ${textMutedColor} opacity-70`}>
-                          EDITED
-                        </span>
+                      {announcement.pinned && !isDepartmentSpecific && (
+                        <Pin className="h-3 w-3 text-[#FFD700]" fill="#FFD700" />
                       )}
                     </div>
                   </div>
