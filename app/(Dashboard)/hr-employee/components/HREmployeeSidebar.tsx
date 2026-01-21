@@ -101,7 +101,7 @@ export default function HREmployeeSidebar({ activeItem, onItemClick, isOpen, onC
     label: 'Manage Users',
     icon: <Users className="h-3.5 w-3.5" />,
     color: theme === 'dark' ? '#64B5F6' : '#2196F3',
-    visible: true
+    visible: false
   },
   {
     id: 'download-logs',

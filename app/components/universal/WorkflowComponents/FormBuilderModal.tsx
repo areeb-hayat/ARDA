@@ -25,6 +25,8 @@ const FIELD_TYPES = [
   { value: 'table', label: 'Table/Grid', icon: Table },
 ];
 
+const DEFAULT_FIELD_IDS = ['default-title', 'default-description', 'default-priority', 'default-priority-reason', 'default-attachments'];
+
 export default function FormBuilderModal({ initialSchema, onSave, onCancel }: Props) {
   const { colors, getModalStyles } = useTheme();
   
@@ -46,20 +48,24 @@ export default function FormBuilderModal({ initialSchema, onSave, onCancel }: Pr
       order: 1
     },
     {
-      id: 'default-urgency',
+      id: 'default-priority',
       type: 'dropdown' as const,
-      label: 'Urgency',
+      label: 'Priority',
       required: true,
       options: ['Low', 'Medium', 'High'],
       order: 2
     },
     {
-      id: 'default-urgency-reason',
+      id: 'default-priority-reason',
       type: 'textarea' as const,
       label: 'Reason for High Priority',
-      placeholder: 'Explain why this is urgent (required for High priority)',
-      required: false,
-      order: 3
+      placeholder: 'Explain why this is high priority',
+      required: true, // FIXED: Make it required
+      order: 3,
+      conditional: {
+        dependsOn: 'default-priority',
+        showWhen: ['High']
+      }
     },
     {
       id: 'default-attachments',
@@ -71,32 +77,25 @@ export default function FormBuilderModal({ initialSchema, onSave, onCancel }: Pr
     }
   ];
 
-  const initializeFields = () => {
-    const defaultFieldIds = ['default-title', 'default-description', 'default-urgency', 'default-urgency-reason', 'default-attachments'];
-    const customFieldsOnly = initialSchema.fields.filter(f => !defaultFieldIds.includes(f.id));
-    
-    if (initialSchema.useDefaultFields) {
-      return [...getDefaultFields(), ...customFieldsOnly];
-    }
-    
-    return initialSchema.fields;
+  // Deduplicate fields by ID - keep only first occurrence of each unique ID
+  // This fixes data that was corrupted by the old buggy code
+  const deduplicateFields = (fields: FormField[]): FormField[] => {
+    const seen = new Set<string>();
+    return fields.filter(field => {
+      if (seen.has(field.id)) {
+        return false; // Skip duplicate
+      }
+      seen.add(field.id);
+      return true;
+    });
   };
-  
-  const [fields, setFields] = useState<FormField[]>(initializeFields());
-  const [useDefaultFields, setUseDefaultFields] = useState(initialSchema.useDefaultFields);
+
+  // Simply use the fields as provided, but deduplicate them
+  const [fields, setFields] = useState<FormField[]>(
+    deduplicateFields(initialSchema.fields || [])
+  );
   const [selectedField, setSelectedField] = useState<string | null>(null);
   const [draggedField, setDraggedField] = useState<string | null>(null);
-
-  useEffect(() => {
-    const defaultFieldIds = ['default-title', 'default-description', 'default-urgency', 'default-urgency-reason', 'default-attachments'];
-    const customFieldsOnly = fields.filter(f => !defaultFieldIds.includes(f.id));
-    
-    if (useDefaultFields) {
-      setFields([...getDefaultFields(), ...customFieldsOnly]);
-    } else {
-      setFields(customFieldsOnly);
-    }
-  }, [useDefaultFields]);
 
   const addField = (type: FormField['type']) => {
     const newField: FormField = {
@@ -167,48 +166,14 @@ export default function FormBuilderModal({ initialSchema, onSave, onCancel }: Pr
   };
 
   const handleSave = () => {
-    const defaultFieldIds = ['default-title', 'default-description', 'default-urgency', 'default-urgency-reason', 'default-attachments'];
-    const customFields = fields.filter(f => !defaultFieldIds.includes(f.id));
-    
-    const defaultFields = fields.filter(f => defaultFieldIds.includes(f.id));
-    const allDefaultsPresent = defaultFields.length === 5;
-    
-    const originalDefaults = [
-      { id: 'default-title', label: 'Title', placeholder: 'Enter ticket title', required: true },
-      { id: 'default-description', label: 'Description', placeholder: 'Describe the issue in detail', required: true },
-      { id: 'default-urgency', label: 'Urgency', required: true },
-      { id: 'default-urgency-reason', label: 'Reason for High Priority', placeholder: 'Explain why this is urgent (required for High priority)', required: false },
-      { id: 'default-attachments', label: 'Attachments', placeholder: 'Upload relevant files', required: false }
-    ];
-    
-    const defaultsModified = defaultFields.some((field) => {
-      const original = originalDefaults.find(d => d.id === field.id);
-      if (!original) return true;
-      return field.label !== original.label || 
-             field.placeholder !== original.placeholder || 
-             field.required !== original.required;
+    // Simply save all fields as they are - no filtering needed
+    onSave({ 
+      fields: fields,
+      useDefaultFields: false // Not using the flag anymore since all fields are explicit
     });
-    
-    if (useDefaultFields && allDefaultsPresent && !defaultsModified) {
-      onSave({ 
-        fields: customFields, 
-        useDefaultFields: true 
-      });
-    } else if (defaultsModified || !allDefaultsPresent) {
-      onSave({ 
-        fields: fields,
-        useDefaultFields: false
-      });
-    } else {
-      onSave({ 
-        fields: customFields, 
-        useDefaultFields: false 
-      });
-    }
   };
 
   const resetToDefault = () => {
-    setUseDefaultFields(true);
     setFields(getDefaultFields());
     setSelectedField(null);
   };
@@ -257,25 +222,6 @@ export default function FormBuilderModal({ initialSchema, onSave, onCancel }: Pr
         <div className="flex-1 flex overflow-hidden">
           {/* Left Panel - Field Types */}
           <div className={`w-72 p-5 border-r ${colors.modalFooterBorder} ${colors.modalContentBg} overflow-y-auto`}>
-            <div className="mb-5">
-              <label className="flex items-center gap-2 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={useDefaultFields}
-                  onChange={(e) => setUseDefaultFields(e.target.checked)}
-                  className="w-5 h-5 cursor-pointer"
-                />
-                <span className={`text-sm font-bold ${colors.textPrimary}`}>
-                  Include Default Fields
-                </span>
-              </label>
-              <p className={`text-xs ${colors.textSecondary} mt-1.5 ml-7`}>
-                Title, Description, Urgency, Reason, Attachments
-              </p>
-            </div>
-
-            <div className={`h-px mb-5 ${colors.border}`} />
-
             <p className={`text-xs font-black ${colors.textSecondary} uppercase tracking-wider mb-3`}>
               Add Field
             </p>
@@ -541,7 +487,6 @@ export default function FormBuilderModal({ initialSchema, onSave, onCancel }: Pr
         `}>
           <p className={`text-sm font-semibold ${colors.textSecondary}`}>
             {fields.length} field{fields.length !== 1 ? 's' : ''} configured
-            {useDefaultFields && fields.filter(f => f.id.startsWith('field-')).length === 0 && ' (5 defaults)'}
           </p>
           <div className="flex gap-3">
             <button

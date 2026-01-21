@@ -51,12 +51,12 @@ export default function QuickActionsWidget({ onNavigate }: QuickActionsWidgetPro
       icon: <Users className="h-4 w-4" />,
       section: 'team'
     },
-    {
-      id: 'manage-users',
-      label: 'Manage Users',
-      icon: <Users className="h-4 w-4" />,
-      section: 'manage-users'
-    },
+    // {
+    //   id: 'manage-users',
+    //   label: 'Manage Users',
+    //   icon: <Users className="h-4 w-4" />,
+    //   section: 'manage-users'
+    // },
     {
       id: 'calendar',
       label: 'Calendar',

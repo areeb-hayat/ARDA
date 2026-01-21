@@ -38,6 +38,7 @@ export interface IWorkflowHistoryEntry {
     name: string;
     isLead: boolean;
   }>;
+  attachments?: string[];  // ✅ ADD THIS LINE
 }
 
 export interface ITicket extends Document {
@@ -124,8 +125,10 @@ const WorkflowHistorySchema = new Schema({
     userId: String,
     name: String,
     isLead: Boolean
-  }]
+  }],
+  attachments: [{ type: String }]  // ✅ ADD THIS LINE
 });
+
 
 const CreditSchema = new Schema({
   userId: { type: String, required: true },

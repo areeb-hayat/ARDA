@@ -78,12 +78,73 @@ export default function SuperWorkflowModal({ functionality, employees, onClose, 
 
   // Form builder state
   const [showFormBuilder, setShowFormBuilder] = useState(false);
-  const [formSchema, setFormSchema] = useState<FormSchema>(
-    functionality?.formSchema || { fields: [], useDefaultFields: true }
-  );
+  
+  // Initialize formSchema with default fields for NEW workflows only
+  const getInitialFormSchema = (): FormSchema => {
+    // If editing existing workflow, use its schema as-is
+    if (functionality?.formSchema && functionality.formSchema.fields.length > 0) {
+      return functionality.formSchema;
+    }
+    
+    // For NEW workflows, provide default fields
+    return {
+      fields: [
+        {
+          id: 'default-title',
+          type: 'text',
+          label: 'Title',
+          placeholder: 'Enter ticket title',
+          required: true,
+          order: 0
+        },
+        {
+          id: 'default-description',
+          type: 'textarea',
+          label: 'Description',
+          placeholder: 'Describe the issue in detail',
+          required: true,
+          order: 1
+        },
+        {
+          id: 'default-priority',
+          type: 'dropdown',
+          label: 'Priority',
+          required: true,
+          options: ['Low', 'Medium', 'High'],
+          order: 2
+        },
+        {
+          id: 'default-priority-reason',
+          type: 'textarea',
+          label: 'Reason for High Priority',
+          placeholder: 'Explain why this is high priority',
+          required: true, // FIXED: Make it required
+          order: 3,
+          conditional: {
+            dependsOn: 'default-priority',
+            showWhen: ['High']
+          }
+        },
+        {
+          id: 'default-attachments',
+          type: 'file',
+          label: 'Attachments',
+          placeholder: 'Upload relevant files',
+          required: false,
+          order: 4
+        }
+      ],
+      useDefaultFields: false
+    };
+  };
+  
+  const [formSchema, setFormSchema] = useState<FormSchema>(getInitialFormSchema());
 
   // Errors
   const [errors, setErrors] = useState<string[]>([]);
+  
+  // Loading state
+  const [isSaving, setIsSaving] = useState(false);
 
   // Solid backgrounds based on theme
   const modalBg = theme === 'dark' ? '#0a0a1a' : '#ffffff';
@@ -116,24 +177,31 @@ export default function SuperWorkflowModal({ functionality, employees, onClose, 
     return errs.length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (isSaving) return; // Prevent multiple saves
+    
     if (validateWorkflow()) {
-      const userData = localStorage.getItem('user');
-      if (!userData) return;
+      setIsSaving(true);
+      try {
+        const userData = localStorage.getItem('user');
+        if (!userData) return;
 
-      const user = JSON.parse(userData);
+        const user = JSON.parse(userData);
 
-      onSave({
-        name,
-        description,
-        workflow: { nodes, edges },
-        formSchema,
-        accessControl,
-        createdBy: {
-          userId: user._id,
-          name: user.basicDetails?.name || user.username
-        }
-      });
+        await onSave({
+          name,
+          description,
+          workflow: { nodes, edges },
+          formSchema,
+          accessControl,
+          createdBy: {
+            userId: user._id,
+            name: user.basicDetails?.name || user.username
+          }
+        });
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
@@ -176,7 +244,8 @@ export default function SuperWorkflowModal({ functionality, employees, onClose, 
             <div className="flex items-center gap-3 mb-2">
               <button
                 onClick={onClose}
-                className={`group relative flex items-center justify-center p-2 rounded-lg transition-all duration-300 overflow-hidden bg-gradient-to-br ${colors.cardBg} border-2 ${charColors.border} ${colors.shadowCard} hover:scale-110`}
+                disabled={isSaving}
+                className={`group relative flex items-center justify-center p-2 rounded-lg transition-all duration-300 overflow-hidden bg-gradient-to-br ${colors.cardBg} border-2 ${charColors.border} ${colors.shadowCard} hover:scale-110 ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
                 <div
@@ -205,7 +274,8 @@ export default function SuperWorkflowModal({ functionality, employees, onClose, 
             {/* Form Customization Button */}
             <button
               onClick={() => setShowFormBuilder(true)}
-              className={`group relative w-full overflow-hidden rounded-lg px-4 py-3 font-bold text-sm transition-all duration-300 bg-gradient-to-r ${cardCharacters.completed.bg} border-2 ${cardCharacters.completed.border} ${cardCharacters.completed.text} flex items-center justify-center gap-2`}
+              disabled={isSaving}
+              className={`group relative w-full overflow-hidden rounded-lg px-4 py-3 font-bold text-sm transition-all duration-300 bg-gradient-to-r ${cardCharacters.completed.bg} border-2 ${cardCharacters.completed.border} ${cardCharacters.completed.text} flex items-center justify-center gap-2 ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
               <div
@@ -222,11 +292,10 @@ export default function SuperWorkflowModal({ functionality, employees, onClose, 
             >
               <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
               <div className={`relative ${colors.textSecondary}`}>
-                {formSchema.useDefaultFields && formSchema.fields.length === 0 && (
-                  <p>✓ Using default form fields</p>
-                )}
-                {formSchema.fields.length > 0 && (
-                  <p>✓ {formSchema.fields.length} custom field{formSchema.fields.length !== 1 ? 's' : ''}</p>
+                {formSchema.fields.length === 0 ? (
+                  <p>No custom fields configured</p>
+                ) : (
+                  <p>✓ {formSchema.fields.length} field{formSchema.fields.length !== 1 ? 's' : ''} configured</p>
                 )}
               </div>
             </div>
@@ -243,19 +312,30 @@ export default function SuperWorkflowModal({ functionality, employees, onClose, 
             <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
             <button
               onClick={handleSave}
-              className={`relative w-full overflow-hidden rounded-lg px-4 py-3 font-bold text-sm transition-all duration-300 bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText} ${colors.shadowCard} hover:${colors.shadowHover} flex items-center justify-center gap-2 group`}
+              disabled={isSaving}
+              className={`relative w-full overflow-hidden rounded-lg px-4 py-3 font-bold text-sm transition-all duration-300 bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText} ${colors.shadowCard} hover:${colors.shadowHover} flex items-center justify-center gap-2 group ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
               <div
                 className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                 style={{ boxShadow: `inset 0 0 30px ${colors.glowPrimary}` }}
               ></div>
-              <Save className="w-4 h-4 relative z-10" />
-              <span className="relative z-10">Save Super Workflow</span>
+              {isSaving ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin relative z-10" />
+                  <span className="relative z-10">Saving...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 relative z-10" />
+                  <span className="relative z-10">Save Super Workflow</span>
+                </>
+              )}
             </button>
             <button
               onClick={onClose}
-              className={`relative w-full overflow-hidden rounded-lg px-4 py-3 font-bold text-sm border-2 ${colors.inputBorder} ${colors.inputBg} ${colors.textPrimary} transition-all duration-300 group`}
+              disabled={isSaving}
+              className={`relative w-full overflow-hidden rounded-lg px-4 py-3 font-bold text-sm border-2 ${colors.inputBorder} ${colors.inputBg} ${colors.textPrimary} transition-all duration-300 group ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <div
                 className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"

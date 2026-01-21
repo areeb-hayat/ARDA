@@ -129,12 +129,12 @@ export default function EmployeeCard({
             )}
 
             {/* Phone */}
-            {employee.contactInformation?.phone ? (
+            {employee.contactInformation?.contactNumber ? (
               <div className={`group/contact relative flex items-center gap-2 p-3 rounded-lg border overflow-hidden bg-gradient-to-r ${infoChar.bg} ${infoChar.border} transition-all`}>
                 <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
                 <Phone className={`h-4 w-4 ${infoChar.iconColor} flex-shrink-0 relative z-10`} />
                 <span className={`text-xs font-medium ${infoChar.text} relative z-10`}>
-                  {employee.contactInformation.phone}
+                  {employee.contactInformation.contactNumber}
                 </span>
               </div>
             ) : (

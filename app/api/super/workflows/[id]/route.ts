@@ -1,6 +1,6 @@
 // ============================================
 // app/api/super/workflows/[id]/route.ts
-// Update and delete super functionalities
+// FIXED: No longer adds default fields on update
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -52,7 +52,12 @@ export async function PUT(
     const body = await request.json();
     const { name, description, workflow, formSchema, accessControl } = body;
 
-    console.log('✏️ Updating super functionality:', id);
+    console.log('✏️ Updating super functionality:', {
+      id,
+      name,
+      hasFormSchema: !!formSchema,
+      formSchemaFields: formSchema?.fields?.length || 0
+    });
 
     // Validation
     if (!name || !workflow) {
@@ -62,72 +67,17 @@ export async function PUT(
       );
     }
 
-    // Build formSchema
-    let finalFields: any[] = [];
-    const useDefaults = !formSchema || formSchema.useDefaultFields !== false;
-    
-    if (useDefaults) {
-      finalFields = [
-        {
-          id: 'default-title',
-          type: 'text',
-          label: 'Title',
-          placeholder: 'Enter ticket title',
-          required: true,
-          order: 0
-        },
-        {
-          id: 'default-description',
-          type: 'textarea',
-          label: 'Description',
-          placeholder: 'Describe the issue in detail',
-          required: true,
-          order: 1
-        },
-        {
-          id: 'default-urgency',
-          type: 'dropdown',
-          label: 'Urgency',
-          required: true,
-          options: ['Low', 'Medium', 'High'],
-          order: 2
-        },
-        {
-          id: 'default-urgency-reason',
-          type: 'textarea',
-          label: 'Reason for High Priority',
-          placeholder: 'Explain why this is urgent (required for High priority)',
-          required: false,
-          order: 3
-        },
-        {
-          id: 'default-attachments',
-          type: 'file',
-          label: 'Attachments',
-          placeholder: 'Upload relevant files',
-          required: false,
-          order: 4
-        }
-      ];
-    }
-    
-    if (formSchema && formSchema.fields && formSchema.fields.length > 0) {
-      const customFields = formSchema.fields.map((field: any, index: number) => ({
-        ...field,
-        order: finalFields.length + index
-      }));
-      finalFields = [...finalFields, ...customFields];
-    }
-
     const updateData: any = {
       name,
       description: description || '',
       workflow,
-      formSchema: {
-        fields: finalFields,
-        useDefaultFields: useDefaults
-      }
     };
+
+    // FIXED: Just save the formSchema as-is, don't add default fields
+    if (formSchema !== undefined) {
+      updateData.formSchema = formSchema;
+      console.log('✅ Saving formSchema as-is - total fields:', formSchema.fields?.length || 0);
+    }
 
     if (accessControl) {
       updateData.accessControl = accessControl;
@@ -145,6 +95,11 @@ export async function PUT(
         { status: 404 }
       );
     }
+
+    console.log('✅ Super functionality updated successfully:', {
+      id: functionality._id,
+      formSchemaFieldCount: functionality.formSchema?.fields?.length || 0
+    });
 
     // Reset active tickets to pending/start
     const activeTickets = await Ticket.find({

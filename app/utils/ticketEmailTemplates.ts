@@ -6,15 +6,104 @@ interface EmailTemplateParams {
   greeting: string;
   mainMessage: string;
   detailsTable: string;
+  workflowHistoryTable?: string;
   actionRequired?: string;
   closingMessage?: string;
 }
 
 /**
+ * Builds workflow history table for email
+ */
+export const buildWorkflowHistoryTable = (workflowHistory: any[] = []): string => {
+  if (!workflowHistory || workflowHistory.length === 0) {
+    return '';
+  }
+
+  const historyRows = workflowHistory
+    .slice().reverse() // Most recent first
+    .slice(0, 10) // Limit to 10 most recent entries
+    .map((entry: any) => {
+      const actionIcon: Record<string, string> = {
+        'forwarded': '➡️',
+        'reverted': '⏪',
+        'reassigned': '🔄',
+        'group_formed': '👥',
+        'in_progress': '📝',
+        'resolved': '✅',
+        'blocked': '🚫',
+        'blocker_reported': '⚠️',
+        'blocker_resolved': '✓',
+        'closed': '🔒',
+        'reopened': '🔓',
+      };
+
+      const icon = actionIcon[entry.actionType] || '•';
+      const date = new Date(entry.performedAt).toLocaleString('en-US', { 
+        month: 'short', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      let actionText = entry.actionType.replace(/_/g, ' ').toUpperCase();
+      let details = '';
+
+      // Add explanation if available
+      if (entry.explanation) {
+        details = `<br/><span style="color: #6b7280; font-size: 11px;">"${entry.explanation}"</span>`;
+      }
+
+      // Add revert message
+      if (entry.actionType === 'reverted' && entry.explanation) {
+        details = `<br/><span style="color: #92400e; font-size: 11px; font-style: italic;">"${entry.explanation}"</span>`;
+      }
+
+      // Add attachments indicator
+      if (entry.attachments && entry.attachments.length > 0) {
+        details += `<br/><span style="color: #6366f1; font-size: 11px;">📎 ${entry.attachments.length} attachment(s)</span>`;
+      }
+
+      // Add group members if applicable
+      if (entry.groupMembers && entry.groupMembers.length > 0) {
+        const memberNames = entry.groupMembers.map((m: any) => 
+          m.isLead ? `<strong>${m.name}</strong> (Lead)` : m.name
+        ).join(', ');
+        details += `<br/><span style="color: #6b7280; font-size: 11px;">Group: ${memberNames}</span>`;
+      }
+
+      return `
+        <tr>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; white-space: nowrap;">${date}</td>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; font-size: 12px;">
+            <strong>${icon} ${actionText}</strong>${details}
+          </td>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; font-size: 12px; color: #374151;">${entry.performedBy?.name || 'System'}</td>
+        </tr>
+      `;
+    })
+    .join('');
+
+  return `
+    <div style="margin: 20px 0;">
+      <h3 style="margin: 0 0 12px 0; color: #111827; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">📜 Workflow History</h3>
+      <table style="width:100%; border-collapse:collapse; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden;">
+        <thead>
+          <tr style="background: #f9fafb;">
+            <th style="padding: 10px 12px; border-bottom: 2px solid #e5e7eb; text-align: left; font-size: 11px; color: #6b7280; font-weight: 600; text-transform: uppercase;">DATE/TIME</th>
+            <th style="padding: 10px 12px; border-bottom: 2px solid #e5e7eb; text-align: left; font-size: 11px; color: #6b7280; font-weight: 600; text-transform: uppercase;">ACTION</th>
+            <th style="padding: 10px 12px; border-bottom: 2px solid #e5e7eb; text-align: left; font-size: 11px; color: #6b7280; font-weight: 600; text-transform: uppercase;">PERFORMED BY</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${historyRows}
+        </tbody>
+      </table>
+    </div>
+  `;
+};
+
+/**
  * Builds a formatted HTML table for ticket details
- * @param ticket - The ticket object
- * @param functionality - Optional functionality object for field labels
- * @returns HTML string for ticket details
  */
 export const buildTicketDetailsTable = (ticket: any, functionality: any = null): string => {
   // Create field label map from functionality
@@ -83,14 +172,11 @@ export const buildTicketDetailsTable = (ticket: any, functionality: any = null):
       } else if (typeof value === 'object' && value !== null) {
         // Handle objects
         try {
-          // Try to parse if it's a stringified JSON
           const parsed = typeof value === 'string' ? JSON.parse(value) : value;
           
-          // If it's a table-like object with columns
           if (Array.isArray(parsed)) {
             const headers = Object.keys(parsed[0] || {});
             
-            // Get column labels from functionality if available
             let columnLabels: Record<string, string> = {};
             if (functionality?.formSchema?.fields) {
               const tableField = functionality.formSchema.fields.find((f: any) => f.id === key);
@@ -118,7 +204,6 @@ export const buildTicketDetailsTable = (ticket: any, functionality: any = null):
               </table>
             `;
           } else {
-            // Regular object - show as key: value pairs
             formattedValue = Object.entries(parsed)
               .map(([k, v]) => `<strong>${k}:</strong> ${v}`)
               .join('<br/>');
@@ -127,7 +212,6 @@ export const buildTicketDetailsTable = (ticket: any, functionality: any = null):
           formattedValue = JSON.stringify(value);
         }
       } else {
-        // Simple string or number
         formattedValue = String(value);
       }
       
@@ -140,19 +224,6 @@ export const buildTicketDetailsTable = (ticket: any, functionality: any = null):
     })
     .join('');
 
-  // Format workflow history (last 5 entries)
-  const historyRows = (ticket.workflowHistory || [])
-    .slice(-5)
-    .reverse()
-    .map((entry: any, index: number) => `
-      <tr>
-        <td style="padding: 8px; border: 1px solid #e5e7eb; font-size: 12px; color: #6b7280;">${new Date(entry.performedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
-        <td style="padding: 8px; border: 1px solid #e5e7eb; font-size: 12px;"><strong>${entry.actionType}</strong></td>
-        <td style="padding: 8px; border: 1px solid #e5e7eb; font-size: 12px;">${entry.performedBy?.name || 'System'}</td>
-      </tr>
-    `)
-    .join('');
-
   // Get priority color
   const priorityColors: Record<string, string> = {
     low: '#10b981',
@@ -162,8 +233,27 @@ export const buildTicketDetailsTable = (ticket: any, functionality: any = null):
   };
   const priorityColor = priorityColors[ticket.priority] || '#6b7280';
 
+  // Count attachments
+  let attachmentCount = 0;
+  Object.entries(ticket.formData || {}).forEach(([key, value]) => {
+    if (key.toLowerCase().includes('attachment') && value) {
+      if (Array.isArray(value)) {
+        attachmentCount += value.length;
+      } else {
+        attachmentCount += 1;
+      }
+    }
+  });
+  
+  // Count workflow history attachments
+  (ticket.workflowHistory || []).forEach((entry: any) => {
+    if (entry.attachments && Array.isArray(entry.attachments)) {
+      attachmentCount += entry.attachments.length;
+    }
+  });
+
   const detailsTable = `
-    <table style="width:100%; border-collapse:collapse; font-family: system-ui, -apple-system, sans-serif; font-size:14px; color:#111827; margin: 20px 0;">
+    <table style="width:100%; border-collapse:collapse; font-family: system-ui, -apple-system, sans-serif; font-size:14px; color:#111827;">
       
       <!-- Ticket Summary Card -->
       <tr>
@@ -178,13 +268,17 @@ export const buildTicketDetailsTable = (ticket: any, functionality: any = null):
         <td style="padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-top: none;">
           <table style="width: 100%; border-collapse: collapse;">
             <tr>
-              <td style="padding: 8px 0; width: 50%;">
+              <td style="padding: 8px 0; width: 33%;">
                 <span style="color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Priority</span><br/>
                 <span style="color: ${priorityColor}; font-weight: 600; font-size: 14px;">${ticket.priority.toUpperCase()}</span>
               </td>
-              <td style="padding: 8px 0; width: 50%;">
+              <td style="padding: 8px 0; width: 33%;">
                 <span style="color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Department</span><br/>
                 <span style="color: #111827; font-weight: 600; font-size: 14px;">${ticket.department}</span>
+              </td>
+              <td style="padding: 8px 0; width: 33%; text-align: right;">
+                <span style="color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Attachments</span><br/>
+                <span style="color: #6366f1; font-weight: 600; font-size: 14px;">📎 ${attachmentCount}</span>
               </td>
             </tr>
           </table>
@@ -225,31 +319,6 @@ export const buildTicketDetailsTable = (ticket: any, functionality: any = null):
         </td>
       </tr>
 
-      ${historyRows ? `
-      <!-- Workflow History -->
-      <tr>
-        <td style="padding: 16px 16px 8px 16px;">
-          <h3 style="margin: 0; color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">History</h3>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding: 0 16px 16px 16px;">
-          <table style="width:100%; border-collapse:collapse; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden;">
-            <thead>
-              <tr style="background: #f9fafb;">
-                <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: left; font-size: 11px; color: #6b7280; font-weight: 600;">DATE</th>
-                <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: left; font-size: 11px; color: #6b7280; font-weight: 600;">ACTION</th>
-                <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: left; font-size: 11px; color: #6b7280; font-weight: 600;">BY</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${historyRows}
-            </tbody>
-          </table>
-        </td>
-      </tr>
-      ` : ''}
-
     </table>
   `;
 
@@ -258,8 +327,6 @@ export const buildTicketDetailsTable = (ticket: any, functionality: any = null):
 
 /**
  * Generic email template builder
- * @param params - Email template parameters
- * @returns Complete HTML email template
  */
 export const buildEmailTemplate = ({
   recipientName,
@@ -267,6 +334,7 @@ export const buildEmailTemplate = ({
   greeting,
   mainMessage,
   detailsTable,
+  workflowHistoryTable = '',
   actionRequired = '',
   closingMessage = '',
 }: EmailTemplateParams): string => {
@@ -280,7 +348,7 @@ export const buildEmailTemplate = ({
     </head>
     <body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #111827; margin: 0; padding: 0; background-color: #f3f4f6;">
       
-      <table style="max-width: 600px; margin: 20px auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <table style="max-width: 650px; margin: 20px auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
         
         <!-- Header -->
         <tr>
@@ -315,6 +383,15 @@ export const buildEmailTemplate = ({
           </td>
         </tr>
 
+        ${workflowHistoryTable ? `
+        <!-- Workflow History -->
+        <tr>
+          <td style="padding: 0 24px 20px 24px;">
+            ${workflowHistoryTable}
+          </td>
+        </tr>
+        ` : ''}
+
         ${closingMessage ? `
         <!-- Closing -->
         <tr>
@@ -328,7 +405,7 @@ export const buildEmailTemplate = ({
         <tr>
           <td style="padding: 20px 24px; background: #f9fafb; border-top: 1px solid #e5e7eb;">
             <p style="margin: 0; color: #111827; font-size: 14px; font-weight: 500;">Best regards,</p>
-            <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 13px;">ARDA</p>
+            <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 13px;">ARDA Ticketing System</p>
           </td>
         </tr>
 

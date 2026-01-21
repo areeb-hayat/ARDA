@@ -1,7 +1,7 @@
 // ============================================
 // app/components/ticketing/TicketFormModal.tsx
 // Modal for creating tickets with dynamic form
-// UPDATED: Consistent UI for both Super and Normal workflows
+// UPDATED: Fixed conditional field display for priority-reason
 // ============================================
 
 import React, { useState, useEffect } from 'react';
@@ -86,6 +86,28 @@ export default function TicketFormModal({ functionality, onClose, onSuccess }: P
     const newErrors: Record<string, string> = {};
     
     functionality.formSchema.fields.forEach(field => {
+      // BACKWARD COMPATIBILITY: Skip validation for hardcoded priority-reason fields
+      if (field.id === 'default-priority-reason' || field.id === 'default-urgency-reason') {
+        const priorityValue = formData['default-priority'] || formData['default-urgency'];
+        if (priorityValue !== 'High') {
+          return; // Skip validation if priority is not High
+        }
+        // If priority IS High, validate that reason is provided
+        const reasonValue = formData[field.id];
+        if (!reasonValue || (typeof reasonValue === 'string' && !reasonValue.trim())) {
+          newErrors[field.id] = `${field.label} is required when Priority is High`;
+        }
+        return;
+      }
+      
+      // FIXED: Skip validation for conditionally hidden fields
+      if (field.conditional) {
+        const dependentValue = formData[field.conditional.dependsOn];
+        if (!field.conditional.showWhen.includes(dependentValue)) {
+          return; // Skip validation for hidden fields
+        }
+      }
+      
       if (field.required) {
         const value = formData[field.id];
         if (!value || (Array.isArray(value) && value.length === 0)) {
@@ -316,11 +338,21 @@ export default function TicketFormModal({ functionality, onClose, onSuccess }: P
         <div className={`relative p-6 ${colors.modalContentBg} max-h-[calc(90vh-240px)] overflow-y-auto`}>
           <form onSubmit={handleSubmit} className={`space-y-6 ${colors.modalContentText}`}>
             {functionality.formSchema.fields.map((field) => {
-              // Conditional rendering: only show urgency-reason if urgency is "High"
-              if (field.id === 'default-urgency-reason') {
-                const urgencyValue = formData['default-urgency'];
-                if (urgencyValue !== 'High') {
-                  return null;
+              // BACKWARD COMPATIBILITY: Handle old workflows without conditional metadata
+              // Check for hardcoded priority-reason field IDs (old and new)
+              if (field.id === 'default-priority-reason' || field.id === 'default-urgency-reason') {
+                const priorityValue = formData['default-priority'] || formData['default-urgency'];
+                if (priorityValue !== 'High') {
+                  return null; // Hide if priority is not High
+                }
+              }
+              
+              // NEW: Generic conditional field rendering for fields with conditional metadata
+              if (field.conditional) {
+                const dependentValue = formData[field.conditional.dependsOn];
+                // Only show if the dependent field's value matches one of the showWhen values
+                if (!field.conditional.showWhen.includes(dependentValue)) {
+                  return null; // Hide this field
                 }
               }
 

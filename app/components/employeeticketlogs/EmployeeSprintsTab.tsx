@@ -135,34 +135,103 @@ export default function EmployeeSprintsTab({ employeeId, employeeName }: Employe
     return s.actions?.filter(a => a.assignedTo.includes(userIdToCheck)) || [];
   });
   
-  const actionStats = {
-    pending: allActions.filter(a => a.status === 'pending').length,
-    inProgress: allActions.filter(a => a.status === 'in-progress').length,
-    inReview: allActions.filter(a => a.status === 'in-review').length,
-    done: allActions.filter(a => a.status === 'done').length,
+  // Calculate action HEALTH statistics (not status)
+  // Note: Actions don't have health field in schema - calculate from status and blockers
+  const actionHealthStats = {
+    healthy: allActions.filter(a => {
+      // Consider healthy if done or no blockers and not overdue
+      const hasBlockers = a.blockers && a.blockers.some((b: any) => !b.isResolved);
+      const isOverdue = a.dueDate && new Date(a.dueDate) < new Date() && a.status !== 'done';
+      return !hasBlockers && !isOverdue;
+    }).length,
+    atRisk: allActions.filter(a => {
+      // At risk if has unresolved blockers but not overdue
+      const hasBlockers = a.blockers && a.blockers.some((b: any) => !b.isResolved);
+      const isOverdue = a.dueDate && new Date(a.dueDate) < new Date() && a.status !== 'done';
+      return hasBlockers && !isOverdue;
+    }).length,
+    delayed: allActions.filter(a => {
+      // Delayed if overdue
+      const isOverdue = a.dueDate && new Date(a.dueDate) < new Date() && a.status !== 'done';
+      return isOverdue;
+    }).length,
   };
 
+  // Calculate sprint HEALTH statistics
+  // Normalize health values and handle undefined/null
   const sprintHealthStats = {
-    healthy: data.sprints.filter(s => s.health === 'healthy').length,
-    atRisk: data.sprints.filter(s => s.health === 'at-risk').length,
-    critical: data.sprints.filter(s => s.health === 'critical').length,
+    healthy: data.sprints.filter(s => {
+      const health = s.health?.toLowerCase();
+      return health === 'healthy';
+    }).length,
+    atRisk: data.sprints.filter(s => {
+      const health = s.health?.toLowerCase();
+      return health === 'at-risk' || health === 'at risk';
+    }).length,
+    critical: data.sprints.filter(s => {
+      const health = s.health?.toLowerCase();
+      return health === 'critical';
+    }).length,
   };
 
   const totalActions = allActions.length;
+  const pendingActions = allActions.filter(a => a.status === 'pending' || a.status === 'in-progress').length;
 
-  // Prepare donut chart data
+  // Prepare donut chart data for SPRINT HEALTH
   const sprintHealthChartData = [
-    { status: 'Healthy', count: sprintHealthStats.healthy, percentage: (sprintHealthStats.healthy / data.sprints.length) * 100, color: theme === 'dark' ? '#81C784' : '#4CAF50' },
-    { status: 'At Risk', count: sprintHealthStats.atRisk, percentage: (sprintHealthStats.atRisk / data.sprints.length) * 100, color: theme === 'dark' ? '#FFB74D' : '#FFA500' },
-    { status: 'Critical', count: sprintHealthStats.critical, percentage: (sprintHealthStats.critical / data.sprints.length) * 100, color: theme === 'dark' ? '#EF5350' : '#F44336' },
+    { 
+      status: 'Healthy', 
+      count: sprintHealthStats.healthy, 
+      percentage: (sprintHealthStats.healthy / data.sprints.length) * 100, 
+      color: theme === 'dark' ? '#81C784' : '#4CAF50' 
+    },
+    { 
+      status: 'At Risk', 
+      count: sprintHealthStats.atRisk, 
+      percentage: (sprintHealthStats.atRisk / data.sprints.length) * 100, 
+      color: theme === 'dark' ? '#FFB74D' : '#FFA500' 
+    },
+    { 
+      status: 'Critical', 
+      count: sprintHealthStats.critical, 
+      percentage: (sprintHealthStats.critical / data.sprints.length) * 100, 
+      color: theme === 'dark' ? '#EF5350' : '#F44336' 
+    },
   ].filter(item => item.count > 0);
 
-  const actionStatusChartData = [
-    { status: 'Pending', count: actionStats.pending, percentage: (actionStats.pending / totalActions) * 100, color: theme === 'dark' ? '#FFB74D' : '#FFA500' },
-    { status: 'In Progress', count: actionStats.inProgress, percentage: (actionStats.inProgress / totalActions) * 100, color: theme === 'dark' ? '#64B5F6' : '#2196F3' },
-    { status: 'In Review', count: actionStats.inReview, percentage: (actionStats.inReview / totalActions) * 100, color: theme === 'dark' ? '#9E9E9E' : '#757575' },
-    { status: 'Done', count: actionStats.done, percentage: (actionStats.done / totalActions) * 100, color: theme === 'dark' ? '#81C784' : '#4CAF50' },
+  // Prepare donut chart data for ACTION HEALTH
+  // Note: Actions don't have health field in schema, need to calculate from blockers/status
+  const actionHealthChartData = [
+    { 
+      status: 'Healthy', 
+      count: actionHealthStats.healthy, 
+      percentage: totalActions > 0 ? (actionHealthStats.healthy / totalActions) * 100 : 0, 
+      color: theme === 'dark' ? '#81C784' : '#4CAF50' 
+    },
+    { 
+      status: 'At Risk', 
+      count: actionHealthStats.atRisk, 
+      percentage: totalActions > 0 ? (actionHealthStats.atRisk / totalActions) * 100 : 0, 
+      color: theme === 'dark' ? '#FFB74D' : '#FFA500' 
+    },
+    { 
+      status: 'Delayed', 
+      count: actionHealthStats.delayed, 
+      percentage: totalActions > 0 ? (actionHealthStats.delayed / totalActions) * 100 : 0, 
+      color: theme === 'dark' ? '#EF5350' : '#F44336' 
+    },
   ].filter(item => item.count > 0);
+
+  console.log('Sprints Tab Debug:', {
+    totalSprints: data.sprints.length,
+    rawSprints: data.sprints.map(s => ({ id: s._id, health: s.health, name: s.name })),
+    sprintHealthStats,
+    sprintHealthChartData,
+    allActions: allActions.map(a => ({ status: a.status, blockers: a.blockers?.length || 0 })),
+    totalActions,
+    actionHealthStats,
+    actionHealthChartData
+  });
 
   const infoChar = cardCharacters.informative;
   const completedChar = cardCharacters.completed;
@@ -209,14 +278,14 @@ export default function EmployeeSprintsTab({ employeeId, employeeName }: Employe
           <div className="relative flex items-center justify-between">
             <div>
               <p className={`text-xs font-semibold ${colors.textMuted} mb-1`}>Pending</p>
-              <p className={`text-5xl font-black ${infoChar.accent}`}>{actionStats.pending + actionStats.inProgress}</p>
+              <p className={`text-5xl font-black ${infoChar.accent}`}>{pendingActions}</p>
             </div>
             <Clock className={`h-16 w-16 ${infoChar.iconColor} opacity-30`} />
           </div>
         </div>
       </div>
 
-      {/* Sprint Health and Action Status - Side by Side (matching Tickets tab) */}
+      {/* Sprint Health and Action Health - Side by Side */}
       <div className="grid grid-cols-2 gap-6">
         {/* Sprint Health Section */}
         <div className={`relative rounded-xl border-2 overflow-hidden bg-gradient-to-br ${completedChar.bg} ${completedChar.border}`}>
@@ -327,7 +396,7 @@ export default function EmployeeSprintsTab({ employeeId, employeeName }: Employe
           </div>
         </div>
 
-        {/* Action Status Section */}
+        {/* Action Health Section */}
         <div className={`relative rounded-xl border-2 overflow-hidden bg-gradient-to-br ${infoChar.bg} ${infoChar.border}`}>
           <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
           
@@ -339,27 +408,35 @@ export default function EmployeeSprintsTab({ employeeId, employeeName }: Employe
               </div>
               <div className="flex-1">
                 <h3 className={`text-lg font-black ${colors.textPrimary} flex items-center gap-2`}>
-                  Action Status
+                  Action Health
                   <span className={`px-2.5 py-1 rounded-lg text-sm font-black border-2 ${infoChar.border} ${infoChar.accent}`}>
                     {totalActions}
                   </span>
                 </h3>
-                <p className={`text-xs font-semibold ${colors.textMuted}`}>Work item breakdown</p>
+                <p className={`text-xs font-semibold ${colors.textMuted}`}>Work item health breakdown</p>
               </div>
             </div>
 
             {/* Donut Chart and Legend - Side by Side */}
-            <div className={`relative p-4 rounded-xl border-2 overflow-hidden ${colors.cardBg} ${colors.borderSubtle}`}>
-              <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
-              
-              <div className="relative flex items-center gap-6">
-                {/* Donut Chart */}
-                <DonutChart data={actionStatusChartData} size={180} strokeWidth={30} centerLabel="Actions" />
+            {totalActions > 0 ? (
+              <div className={`relative p-4 rounded-xl border-2 overflow-hidden ${colors.cardBg} ${colors.borderSubtle}`}>
+                <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
                 
-                {/* Status Legend */}
-                <StatusLegend data={actionStatusChartData} />
+                <div className="relative flex items-center gap-6">
+                  {/* Donut Chart */}
+                  <DonutChart data={actionHealthChartData} size={180} strokeWidth={30} centerLabel="Actions" />
+                  
+                  {/* Status Legend */}
+                  <StatusLegend data={actionHealthChartData} />
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className={`relative p-8 rounded-xl border-2 overflow-hidden text-center ${colors.cardBg} ${colors.borderSubtle}`}>
+                <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
+                <Target className={`h-12 w-12 ${colors.textMuted} mx-auto mb-2 opacity-50`} />
+                <p className={`text-xs font-semibold ${colors.textMuted}`}>No actions assigned yet</p>
+              </div>
+            )}
 
             {/* Info Box */}
             <div className={`relative p-3 rounded-xl border-2 overflow-hidden flex items-start gap-2 ${colors.cardBg} ${infoChar.border}`}>
@@ -369,7 +446,7 @@ export default function EmployeeSprintsTab({ employeeId, employeeName }: Employe
                 <p className="font-semibold mb-1">Health Indicators:</p>
                 <p className="leading-relaxed"><span className="text-green-500 font-semibold">Healthy:</span> On track</p>
                 <p className="leading-relaxed"><span className="text-amber-500 font-semibold">At Risk:</span> Minor blockers</p>
-                <p className="leading-relaxed"><span className="text-red-500 font-semibold">Critical:</span> Critical blockers</p>
+                <p className="leading-relaxed"><span className="text-red-500 font-semibold">Critical/Delayed:</span> Critical blockers</p>
               </div>
             </div>
           </div>

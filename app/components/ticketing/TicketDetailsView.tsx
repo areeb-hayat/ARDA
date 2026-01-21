@@ -1,13 +1,15 @@
 // ============================================
 // app/components/ticketing/TicketDetailsView.tsx
-// UPDATED WITH THEME CONTEXT
+// FINAL: Form attachments + workflow attachments display
 // ============================================
 
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
-  Info, Clock, User, AlertTriangle, CheckCircle, ArrowRight
+  Info, Clock, User, AlertTriangle, CheckCircle, ArrowRight,
+  Undo2, Paperclip, Download, FileText, Image as ImageIcon,
+  File, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { useTheme } from '@/app/context/ThemeContext';
 
@@ -46,6 +48,89 @@ interface Props {
 export default function TicketDetailsView({ ticket, workflowPosition }: Props) {
   const { colors, cardCharacters } = useTheme();
   const charColors = cardCharacters.informative;
+  const [expandedHistory, setExpandedHistory] = useState<number[]>([]);
+
+  const toggleHistoryExpansion = (index: number) => {
+    setExpandedHistory(prev => 
+      prev.includes(index) 
+        ? prev.filter(i => i !== index)
+        : [...prev, index]
+    );
+  };
+
+  const getFileIcon = (filename: string) => {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext || '')) {
+      return <ImageIcon className="w-4 h-4" />;
+    }
+    if (['pdf'].includes(ext || '')) {
+      return <FileText className="w-4 h-4" />;
+    }
+    return <File className="w-4 h-4" />;
+  };
+
+  const getActionIcon = (actionType: string) => {
+    switch (actionType) {
+      case 'reverted':
+        return <Undo2 className="w-4 h-4" />;
+      case 'forwarded':
+        return <ArrowRight className="w-4 h-4" />;
+      case 'in_progress':
+      case 'mark_in_progress':
+        return <Clock className="w-4 h-4" />;
+      case 'blocker_reported':
+        return <AlertTriangle className="w-4 h-4" />;
+      case 'blocker_resolved':
+        return <CheckCircle className="w-4 h-4" />;
+      case 'resolved':
+        return <CheckCircle className="w-4 h-4" />;
+      default:
+        return <ArrowRight className="w-4 h-4" />;
+    }
+  };
+
+  const getActionColor = (actionType: string) => {
+    switch (actionType) {
+      case 'reverted':
+        return cardCharacters.interactive;
+      case 'blocker_reported':
+        return cardCharacters.urgent;
+      case 'blocker_resolved':
+      case 'resolved':
+        return cardCharacters.completed;
+      case 'forwarded':
+        return cardCharacters.informative;
+      default:
+        return cardCharacters.neutral;
+    }
+  };
+
+  // Helper function to convert attachment path to API URL
+  const getAttachmentUrl = (attachmentPath: string): string => {
+    // Handle absolute paths (old format)
+    if (attachmentPath.includes('\\') || attachmentPath.startsWith('D:') || attachmentPath.startsWith('C:')) {
+      const uploadsIndex = attachmentPath.indexOf('uploads');
+      if (uploadsIndex !== -1) {
+        const relativePath = attachmentPath.substring(uploadsIndex).replace(/\\/g, '/');
+        return `/api/attachments/${relativePath.replace('uploads/tickets/', '')}`;
+      }
+      // Fallback: try to extract ticket number and filename
+      const parts = attachmentPath.split(/[\\\/]/);
+      const ticketIndex = parts.findIndex(p => p.startsWith('TKT-'));
+      if (ticketIndex !== -1 && ticketIndex < parts.length - 1) {
+        const ticketNumber = parts[ticketIndex];
+        const filename = parts[parts.length - 1];
+        return `/api/attachments/${ticketNumber}/${filename}`;
+      }
+      return attachmentPath; // Fallback to original if can't parse
+    }
+    
+    // Handle relative paths (new format)
+    return `/api/attachments/${attachmentPath.replace('uploads/tickets/', '')}`;
+  };
+
+  // Extract form attachments
+  const formAttachments = ticket.formData?.['default-attachments'] || [];
 
   return (
     <div className="space-y-4">
@@ -95,6 +180,9 @@ export default function TicketDetailsView({ ticket, workflowPosition }: Props) {
             <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
             <div className="relative space-y-3">
               {Object.entries(ticket.formData).map(([key, value]) => {
+                // Handle attachments separately at the end
+                if (key === 'default-attachments') return null;
+                
                 const label = key
                   .replace('default-', '')
                   .replace(/-/g, ' ')
@@ -173,6 +261,59 @@ export default function TicketDetailsView({ ticket, workflowPosition }: Props) {
                   </div>
                 );
               })}
+
+              {/* Form Attachments Section */}
+              {formAttachments.length > 0 && (
+                <div className={`pt-3 border-t ${colors.borderSubtle}`}>
+                  <p className={`text-xs font-bold ${colors.textMuted} mb-3 uppercase flex items-center gap-2`}>
+                    <Paperclip className="w-4 h-4" />
+                    📎 Form Attachments ({formAttachments.length})
+                  </p>
+                  <div className="space-y-2">
+                    {formAttachments.map((attachment: string, idx: number) => {
+                      const fileName = attachment.split(/[\\\/]/).pop() || attachment;
+                      const fileUrl = getAttachmentUrl(attachment);
+                      
+                      return (
+                        <a
+                          key={idx}
+                          href={fileUrl}
+                          download
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`
+                            group relative flex items-center gap-3 p-3 rounded-lg border-2 
+                            transition-all duration-300 overflow-hidden
+                            ${colors.inputBg} ${colors.inputBorder}
+                          `}
+                        >
+                          {/* Paper Texture */}
+                          <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
+                          
+                          {/* Internal Glow */}
+                          <div 
+                            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                            style={{ boxShadow: `inset 0 0 20px ${colors.glowPrimary}` }}
+                          ></div>
+                          
+                          <div className={`relative z-10 p-2 rounded-lg bg-gradient-to-r ${charColors.bg} ${charColors.iconColor}`}>
+                            {getFileIcon(fileName)}
+                          </div>
+                          <div className="relative z-10 flex-1 min-w-0">
+                            <p className={`text-sm font-semibold ${colors.textPrimary} truncate`}>
+                              {fileName}
+                            </p>
+                            <p className={`text-xs ${colors.textMuted}`}>
+                              Submitted with form
+                            </p>
+                          </div>
+                          <Download className={`relative z-10 w-4 h-4 ${colors.textMuted} group-hover:${charColors.iconColor} group-hover:translate-x-1 transition-all duration-300`} />
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -216,39 +357,194 @@ export default function TicketDetailsView({ ticket, workflowPosition }: Props) {
         </div>
       )}
 
-      {/* Workflow History */}
+      {/* Enhanced Workflow History */}
       {ticket.workflowHistory && ticket.workflowHistory.length > 0 && (
         <div>
           <h3 className={`font-bold ${colors.textPrimary} mb-3 flex items-center gap-2`}>
             <Clock className={`w-5 h-5 ${charColors.iconColor}`} />
             Workflow History
           </h3>
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {ticket.workflowHistory.slice().reverse().map((entry: any, index: number) => (
-              <div 
-                key={index}
-                className={`relative overflow-hidden p-3 rounded-lg border-2 ${colors.inputBg} ${colors.inputBorder}`}
-              >
-                <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
-                <div className="relative flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className={`text-sm font-semibold ${colors.textPrimary} flex items-center gap-2`}>
-                      <ArrowRight className="w-3 h-3" />
-                      {entry.actionType.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
-                    </p>
-                    {entry.explanation && (
-                      <p className={`text-xs ${colors.textSecondary} mt-1 ml-5 italic`}>
-                        {entry.explanation}
-                      </p>
+          <div className="space-y-3 max-h-[500px] overflow-y-auto">
+            {ticket.workflowHistory.slice().reverse().map((entry: any, index: number) => {
+              const isExpanded = expandedHistory.includes(index);
+              const hasDetails = entry.explanation || entry.attachments?.length > 0 || entry.blockerDescription;
+              const actionColor = getActionColor(entry.actionType);
+              const isRevert = entry.actionType === 'reverted';
+              
+              return (
+                <div 
+                  key={index}
+                  className={`relative overflow-hidden rounded-xl border-2 transition-all duration-300 ${
+                    isRevert 
+                      ? `bg-gradient-to-br ${cardCharacters.interactive.bg} ${cardCharacters.interactive.border}`
+                      : `${colors.inputBg} ${colors.inputBorder}`
+                  }`}
+                >
+                  <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
+                  
+                  {/* Main Content */}
+                  <div className="relative p-4">
+                    <div className="flex items-start gap-3">
+                      {/* Icon */}
+                      <div className={`p-2 rounded-lg bg-gradient-to-r ${actionColor.bg} ${actionColor.iconColor} flex-shrink-0`}>
+                        {getActionIcon(entry.actionType)}
+                      </div>
+                      
+                      {/* Details */}
+                      <div className="flex-1 min-w-0">
+                        {/* Action Type */}
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="flex-1">
+                            <p className={`font-bold ${isRevert ? cardCharacters.interactive.text : colors.textPrimary} text-base`}>
+                              {entry.actionType.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                            </p>
+                            <p className={`text-xs ${colors.textMuted} mt-0.5 flex items-center gap-1`}>
+                              <User className="w-3 h-3" />
+                              {entry.performedBy?.name} • {new Date(entry.performedAt).toLocaleString()}
+                            </p>
+                          </div>
+                          
+                          {/* Expand Button */}
+                          {hasDetails && (
+                            <button
+                              onClick={() => toggleHistoryExpansion(index)}
+                              className={`group relative p-1.5 rounded-lg transition-all duration-300 overflow-hidden ${colors.buttonGhost} ${colors.buttonGhostText}`}
+                            >
+                              <div 
+                                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                                style={{ boxShadow: `inset 0 0 10px ${colors.glowSecondary}` }}
+                              ></div>
+                              {isExpanded ? (
+                                <ChevronUp className="w-4 h-4 relative z-10 group-hover:translate-y-[-2px] transition-all duration-300" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 relative z-10 group-hover:translate-y-[2px] transition-all duration-300" />
+                              )}
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Quick Preview */}
+                        {!isExpanded && (entry.explanation || entry.blockerDescription) && (
+                          <p className={`text-xs ${colors.textSecondary} italic line-clamp-2 mt-2`}>
+                            {entry.explanation || entry.blockerDescription}
+                          </p>
+                        )}
+                        
+                        {/* Attachment Count Preview */}
+                        {!isExpanded && entry.attachments?.length > 0 && (
+                          <div className={`flex items-center gap-2 mt-2 text-xs ${colors.textMuted}`}>
+                            <Paperclip className="w-3 h-3" />
+                            <span>{entry.attachments.length} attachment{entry.attachments.length > 1 ? 's' : ''}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Expanded Details */}
+                    {isExpanded && hasDetails && (
+                      <div className={`mt-4 pt-4 border-t ${colors.borderSubtle} space-y-3`}>
+                        {/* Message/Explanation */}
+                        {(entry.explanation || entry.blockerDescription) && (
+                          <div 
+                            className={`p-3 rounded-lg border ${
+                              isRevert 
+                                ? `${cardCharacters.interactive.border} bg-gradient-to-r ${cardCharacters.interactive.bg}`
+                                : `${colors.borderSubtle} ${colors.cardBg}`
+                            }`}
+                          >
+                            <p className={`text-xs font-bold ${colors.textMuted} mb-1 uppercase flex items-center gap-1.5`}>
+                              <FileText className="w-3.5 h-3.5" />
+                              {isRevert ? 'Revert Message' : entry.blockerDescription ? 'Blocker Description' : 'Explanation'}
+                            </p>
+                            <p className={`text-sm ${isRevert ? cardCharacters.interactive.text : colors.textPrimary} leading-relaxed`}>
+                              {entry.explanation || entry.blockerDescription}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Attachments */}
+                        {entry.attachments && entry.attachments.length > 0 && (
+                          <div>
+                            <p className={`text-xs font-bold ${colors.textMuted} mb-2 uppercase flex items-center gap-1.5`}>
+                              <Paperclip className="w-3.5 h-3.5" />
+                              Attachments ({entry.attachments.length})
+                            </p>
+                            <div className="space-y-2">
+                              {entry.attachments.map((attachment: string, idx: number) => {
+                                const fileName = attachment.split(/[\\\/]/).pop() || attachment;
+                                const fileUrl = getAttachmentUrl(attachment);
+                                
+                                return (
+                                  <a
+                                    key={idx}
+                                    href={fileUrl}
+                                    download
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`
+                                      group relative flex items-center gap-3 p-3 rounded-lg border-2 
+                                      transition-all duration-300 overflow-hidden
+                                      ${colors.inputBg} ${colors.inputBorder}
+                                    `}
+                                  >
+                                    {/* Paper Texture */}
+                                    <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
+                                    
+                                    {/* Internal Glow */}
+                                    <div 
+                                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                                      style={{ boxShadow: `inset 0 0 20px ${colors.glowPrimary}` }}
+                                    ></div>
+                                    
+                                    <div className={`relative z-10 p-2 rounded ${actionColor.bg} ${actionColor.iconColor}`}>
+                                      {getFileIcon(fileName)}
+                                    </div>
+                                    <div className="relative z-10 flex-1 min-w-0">
+                                      <p className={`text-sm font-medium ${colors.textPrimary} truncate`}>
+                                        {fileName}
+                                      </p>
+                                      <p className={`text-xs ${colors.textMuted}`}>
+                                        Click to download
+                                      </p>
+                                    </div>
+                                    <Download className={`relative z-10 w-4 h-4 ${colors.textMuted} group-hover:${actionColor.iconColor} group-hover:translate-x-1 transition-all duration-300`} />
+                                  </a>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Group Members */}
+                        {entry.groupMembers && entry.groupMembers.length > 0 && (
+                          <div>
+                            <p className={`text-xs font-bold ${colors.textMuted} mb-2 uppercase`}>
+                              Group Members ({entry.groupMembers.length})
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {entry.groupMembers.map((member: any, idx: number) => (
+                                <span
+                                  key={idx}
+                                  className={`
+                                    px-3 py-1.5 rounded-full text-xs font-semibold
+                                    ${member.isLead 
+                                      ? `bg-gradient-to-r ${cardCharacters.authoritative.bg} ${cardCharacters.authoritative.text}`
+                                      : `bg-gradient-to-r ${charColors.bg} ${charColors.text}`
+                                    }
+                                  `}
+                                >
+                                  {member.isLead && '👑 '}{member.name}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
-                    <p className={`text-xs ${colors.textMuted} mt-1 ml-5 flex items-center gap-1`}>
-                      <User className="w-3 h-3" />
-                      {entry.performedBy?.name} • {new Date(entry.performedAt).toLocaleString()}
-                    </p>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

@@ -1,6 +1,6 @@
 // ============================================
 // UPDATED: app/api/functionalities/[id]/route.ts
-// Added ticket management for updates and deletes
+// FIXED: No longer adds default fields on update
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -88,64 +88,10 @@ export async function PUT(
       workflow,
     };
 
-    // Build formSchema with same logic as POST
+    // FIXED: Just save the formSchema as-is, don't add default fields
     if (formSchema !== undefined) {
-      let finalFields: any[] = [];
-      const useDefaults = formSchema.useDefaultFields !== false;
-      
-      // Add default fields if enabled
-      if (useDefaults) {
-        finalFields = [
-          {
-            id: 'default-title',
-            type: 'text',
-            label: 'Title',
-            placeholder: 'Enter ticket title',
-            required: true,
-            order: 0
-          },
-          {
-            id: 'default-description',
-            type: 'textarea',
-            label: 'Description',
-            placeholder: 'Describe the issue in detail',
-            required: true,
-            order: 1
-          },
-          {
-            id: 'default-urgency',
-            type: 'dropdown',
-            label: 'Urgency',
-            required: true,
-            options: ['Low', 'Medium', 'High'],
-            order: 2
-          },
-          {
-            id: 'default-urgency-reason',
-            type: 'textarea',
-            label: 'Reason for High Priority',
-            placeholder: 'Explain why this is urgent (required for High priority)',
-            required: false,
-            order: 3
-          }
-        ];
-      }
-      
-      // Append custom fields
-      if (formSchema.fields && formSchema.fields.length > 0) {
-        const customFields = formSchema.fields.map((field: any, index: number) => ({
-          ...field,
-          order: finalFields.length + index
-        }));
-        finalFields = [...finalFields, ...customFields];
-      }
-      
-      updateData.formSchema = {
-        fields: finalFields,
-        useDefaultFields: useDefaults
-      };
-      
-      console.log('✅ Updating formSchema - total fields:', finalFields.length);
+      updateData.formSchema = formSchema;
+      console.log('✅ Saving formSchema as-is - total fields:', formSchema.fields?.length || 0);
     }
 
     // Update the functionality
@@ -168,7 +114,7 @@ export async function PUT(
     });
 
     // ============================================
-    // NEW: Reset active tickets to pending/start
+    // Reset active tickets to pending/start
     // ============================================
     
     // Find all active tickets (not resolved or closed) for this functionality
@@ -293,7 +239,7 @@ export async function DELETE(
     const { id } = await params;
     
     // ============================================
-    // NEW: Check for non-closed tickets
+    // Check for non-closed tickets
     // ============================================
     
     // Count tickets that are NOT closed

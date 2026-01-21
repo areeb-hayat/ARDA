@@ -1,14 +1,15 @@
 // ============================================
 // app/components/ticketing/TicketActionsList.tsx
-// UPDATED: Allow group formation for in-progress tickets, use theme toast
+// UPDATED: Forward attachments, required explanation, theme-compliant buttons (NO SCALE)
 // ============================================
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Loader2, ArrowRight, AlertTriangle, 
-  Users, UserPlus, Play, Send, CheckCircle2
+  Users, UserPlus, Play, Send, CheckCircle2,
+  Undo2, Paperclip, X
 } from 'lucide-react';
 import { useTheme } from '@/app/context/ThemeContext';
 
@@ -39,6 +40,12 @@ interface Props {
   loading: boolean;
 }
 
+interface FileWithPreview {
+  file: File;
+  name: string;
+  preview?: string;
+}
+
 export default function TicketActionsList({ 
   ticket, 
   userId, 
@@ -56,6 +63,13 @@ export default function TicketActionsList({
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
   const [explanation, setExplanation] = useState('');
   const [blockerDescription, setBlockerDescription] = useState('');
+  const [revertMessage, setRevertMessage] = useState('');
+  const [revertFiles, setRevertFiles] = useState<FileWithPreview[]>([]);
+  const [forwardMessage, setForwardMessage] = useState('');
+  const [forwardFiles, setForwardFiles] = useState<FileWithPreview[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const forwardFileInputRef = useRef<HTMLInputElement>(null);
+  
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
@@ -71,6 +85,19 @@ export default function TicketActionsList({
     if (!nextEdge) return null;
     
     return workflow.nodes.find((n: any) => n.id === nextEdge.target);
+  };
+
+  const getPrevNode = () => {
+    if (!ticket.functionality?.workflow || !workflowPosition.canRevert) {
+      return null;
+    }
+    
+    const workflow = ticket.functionality.workflow;
+    const prevEdge = workflow.edges.find((e: any) => e.target === ticket.workflowStage);
+    
+    if (!prevEdge) return null;
+    
+    return workflow.nodes.find((n: any) => n.id === prevEdge.source);
   };
 
   const fetchDepartmentEmployees = async () => {
@@ -103,6 +130,61 @@ export default function TicketActionsList({
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'revert' | 'forward') => {
+    const files = Array.from(e.target.files || []);
+    
+    const newFiles: FileWithPreview[] = files.map(file => {
+      const fileWithPreview: FileWithPreview = {
+        file,
+        name: file.name
+      };
+      
+      // Create preview for images
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          fileWithPreview.preview = reader.result as string;
+          if (type === 'revert') {
+            setRevertFiles(prev => [...prev]);
+          } else {
+            setForwardFiles(prev => [...prev]);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+      
+      return fileWithPreview;
+    });
+    
+    if (type === 'revert') {
+      setRevertFiles(prev => [...prev, ...newFiles]);
+    } else {
+      setForwardFiles(prev => [...prev, ...newFiles]);
+    }
+  };
+
+  const removeFile = (index: number, type: 'revert' | 'forward') => {
+    if (type === 'revert') {
+      setRevertFiles(prev => prev.filter((_, i) => i !== index));
+    } else {
+      setForwardFiles(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        // Remove the data URL prefix (e.g., "data:image/png;base64,")
+        const base64Data = base64String.split(',')[1];
+        resolve(base64Data);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleActionClick = (action: string) => {
     setSelectedAction(action);
     if (['reassign', 'form_group'].includes(action)) {
@@ -115,6 +197,16 @@ export default function TicketActionsList({
 
     if (selectedAction === 'report_blocker' && !blockerDescription) {
       showToast('Please describe the blocker', 'warning');
+      return;
+    }
+
+    if (selectedAction === 'revert' && !revertMessage) {
+      showToast('Please provide a revert message', 'warning');
+      return;
+    }
+
+    if (selectedAction === 'forward' && !forwardMessage) {
+      showToast('Please provide a forward message', 'warning');
       return;
     }
 
@@ -138,10 +230,56 @@ export default function TicketActionsList({
         return;
       }
       payload.toNode = nextNode.id;
-      if (explanation) payload.explanation = explanation;
+      payload.explanation = forwardMessage; // REQUIRED
+      
+      // Process forward attachments (OPTIONAL)
+      if (forwardFiles.length > 0) {
+        try {
+          const attachments = await Promise.all(
+            forwardFiles.map(async ({ file }) => ({
+              name: file.name,
+              type: file.type,
+              data: await fileToBase64(file)
+            }))
+          );
+          payload.forwardAttachments = attachments;
+        } catch (error) {
+          console.error('Error processing forward files:', error);
+          showToast('Failed to process file attachments', 'error');
+          return;
+        }
+      }
     }
 
-    if (explanation && selectedAction !== 'forward') {
+    if (selectedAction === 'revert') {
+      const prevNode = getPrevNode();
+      if (!prevNode) {
+        showToast('Cannot determine previous node in workflow', 'error');
+        return;
+      }
+      payload.toNode = prevNode.id;
+      payload.revertMessage = revertMessage;
+      
+      // Process revert attachments (OPTIONAL)
+      if (revertFiles.length > 0) {
+        try {
+          const attachments = await Promise.all(
+            revertFiles.map(async ({ file }) => ({
+              name: file.name,
+              type: file.type,
+              data: await fileToBase64(file)
+            }))
+          );
+          payload.revertAttachments = attachments;
+        } catch (error) {
+          console.error('Error processing revert files:', error);
+          showToast('Failed to process file attachments', 'error');
+          return;
+        }
+      }
+    }
+
+    if (explanation && !['forward', 'revert'].includes(selectedAction)) {
       payload.explanation = explanation;
     }
 
@@ -174,6 +312,10 @@ export default function TicketActionsList({
     setSelectedAction(null);
     setExplanation('');
     setBlockerDescription('');
+    setRevertMessage('');
+    setRevertFiles([]);
+    setForwardMessage('');
+    setForwardFiles([]);
     setSelectedEmployees([]);
   };
 
@@ -197,6 +339,11 @@ export default function TicketActionsList({
       if (!isGroupMember) {
         actions.push('form_group');
       }
+      
+      // Can revert from pending if not at first node
+      if (workflowPosition.canRevert && !workflowPosition.isFirst) {
+        actions.push('revert');
+      }
     }
 
     if (ticket.status === 'in-progress') {
@@ -208,16 +355,25 @@ export default function TicketActionsList({
         actions.push('reassign');
       }
       
-      // 🆕 Allow group formation for in-progress tickets (if not already in a group)
       if (!isGroupMember) {
         actions.push('form_group');
       }
       
       actions.push('report_blocker');
+      
+      // Can revert from in-progress if not at first node
+      if (workflowPosition.canRevert && !workflowPosition.isFirst) {
+        actions.push('revert');
+      }
     }
 
     if (ticket.status === 'blocked') {
       actions.push('blocker_resolved');
+      
+      // Can revert from blocked if not at first node
+      if (workflowPosition.canRevert && !workflowPosition.isFirst) {
+        actions.push('revert');
+      }
     }
 
     return actions;
@@ -243,6 +399,9 @@ export default function TicketActionsList({
   }
 
   if (selectedAction) {
+    const prevNode = selectedAction === 'revert' ? getPrevNode() : null;
+    const nextNode = selectedAction === 'forward' ? getNextNode() : null;
+    
     return (
       <div className="space-y-4">
         <div 
@@ -250,12 +409,192 @@ export default function TicketActionsList({
         >
           <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
           <p className={`relative font-semibold ${charColors.text}`}>
-            {selectedAction.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+            {selectedAction === 'revert' && prevNode
+              ? `Revert to: ${prevNode.data?.label || 'Previous Stage'}`
+              : selectedAction === 'forward' && nextNode
+              ? `Forward to: ${nextNode.data?.label || 'Next Stage'}`
+              : selectedAction.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
           </p>
         </div>
 
-        {/* Explanation Field */}
-        {['forward', 'reassign'].includes(selectedAction) && (
+        {/* Forward Message & Files */}
+        {selectedAction === 'forward' && (
+          <>
+            <div>
+              <label className={`block text-sm font-bold ${colors.textPrimary} mb-2`}>
+                Forward Message (Required) *
+              </label>
+              <textarea
+                value={forwardMessage}
+                onChange={(e) => setForwardMessage(e.target.value)}
+                placeholder="Explain what you've done and any notes for the next stage..."
+                rows={4}
+                className={`w-full px-4 py-3 rounded-xl text-sm transition-all resize-none ${colors.inputBg} border ${colors.inputBorder} ${colors.inputText} ${colors.inputPlaceholder} ${colors.inputFocusBg}`}
+                required
+              />
+            </div>
+
+            <div>
+              <label className={`block text-sm font-bold ${colors.textPrimary} mb-2`}>
+                Attachments (Optional)
+              </label>
+              
+              <input
+                ref={forwardFileInputRef}
+                type="file"
+                multiple
+                onChange={(e) => handleFileSelect(e, 'forward')}
+                className="hidden"
+                accept="*/*"
+              />
+              
+              <button
+                type="button"
+                onClick={() => forwardFileInputRef.current?.click()}
+                className={`group relative w-full px-4 py-3 rounded-xl border-2 border-dashed transition-all duration-300 overflow-hidden ${colors.inputBg} ${colors.inputBorder} ${colors.textPrimary} flex items-center justify-center gap-2`}
+              >
+                <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
+                <div 
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{ boxShadow: `inset 0 0 20px ${colors.glowSecondary}` }}
+                ></div>
+                <Paperclip className="w-5 h-5 relative z-10 group-hover:rotate-12 transition-all duration-300" />
+                <span className="relative z-10">Click to attach files</span>
+              </button>
+              
+              {forwardFiles.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {forwardFiles.map((fileObj, index) => (
+                    <div
+                      key={index}
+                      className={`flex items-center gap-3 p-3 rounded-lg border ${colors.inputBg} ${colors.inputBorder}`}
+                    >
+                      {fileObj.preview ? (
+                        <img
+                          src={fileObj.preview}
+                          alt={fileObj.name}
+                          className="w-10 h-10 object-cover rounded"
+                        />
+                      ) : (
+                        <Paperclip className={`w-5 h-5 ${colors.textMuted}`} />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium ${colors.textPrimary} truncate`}>
+                          {fileObj.name}
+                        </p>
+                        <p className={`text-xs ${colors.textMuted}`}>
+                          {(fileObj.file.size / 1024).toFixed(1)} KB
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(index, 'forward')}
+                        className={`group relative p-1 rounded-lg transition-all duration-300 overflow-hidden ${colors.buttonGhost} ${colors.buttonGhostText}`}
+                      >
+                        <div 
+                          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                          style={{ boxShadow: `inset 0 0 10px ${colors.glowWarning}` }}
+                        ></div>
+                        <X className="w-4 h-4 relative z-10 group-hover:rotate-90 transition-all duration-300" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Revert Message & Files */}
+        {selectedAction === 'revert' && (
+          <>
+            <div>
+              <label className={`block text-sm font-bold ${colors.textPrimary} mb-2`}>
+                Revert Message (Required) *
+              </label>
+              <textarea
+                value={revertMessage}
+                onChange={(e) => setRevertMessage(e.target.value)}
+                placeholder="Explain why you're reverting this ticket..."
+                rows={4}
+                className={`w-full px-4 py-3 rounded-xl text-sm transition-all resize-none ${colors.inputBg} border ${colors.inputBorder} ${colors.inputText} ${colors.inputPlaceholder} ${colors.inputFocusBg}`}
+                required
+              />
+            </div>
+
+            <div>
+              <label className={`block text-sm font-bold ${colors.textPrimary} mb-2`}>
+                Attachments (Optional)
+              </label>
+              
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                onChange={(e) => handleFileSelect(e, 'revert')}
+                className="hidden"
+                accept="*/*"
+              />
+              
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className={`group relative w-full px-4 py-3 rounded-xl border-2 border-dashed transition-all duration-300 overflow-hidden ${colors.inputBg} ${colors.inputBorder} ${colors.textPrimary} flex items-center justify-center gap-2`}
+              >
+                <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
+                <div 
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{ boxShadow: `inset 0 0 20px ${colors.glowSecondary}` }}
+                ></div>
+                <Paperclip className="w-5 h-5 relative z-10 group-hover:rotate-12 transition-all duration-300" />
+                <span className="relative z-10">Click to attach files</span>
+              </button>
+              
+              {revertFiles.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {revertFiles.map((fileObj, index) => (
+                    <div
+                      key={index}
+                      className={`flex items-center gap-3 p-3 rounded-lg border ${colors.inputBg} ${colors.inputBorder}`}
+                    >
+                      {fileObj.preview ? (
+                        <img
+                          src={fileObj.preview}
+                          alt={fileObj.name}
+                          className="w-10 h-10 object-cover rounded"
+                        />
+                      ) : (
+                        <Paperclip className={`w-5 h-5 ${colors.textMuted}`} />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium ${colors.textPrimary} truncate`}>
+                          {fileObj.name}
+                        </p>
+                        <p className={`text-xs ${colors.textMuted}`}>
+                          {(fileObj.file.size / 1024).toFixed(1)} KB
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(index, 'revert')}
+                        className={`group relative p-1 rounded-lg transition-all duration-300 overflow-hidden ${colors.buttonGhost} ${colors.buttonGhostText}`}
+                      >
+                        <div 
+                          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                          style={{ boxShadow: `inset 0 0 10px ${colors.glowWarning}` }}
+                        ></div>
+                        <X className="w-4 h-4 relative z-10 group-hover:rotate-90 transition-all duration-300" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Explanation Field (for reassign) */}
+        {['reassign'].includes(selectedAction) && (
           <div>
             <label className={`block text-sm font-bold ${colors.textPrimary} mb-2`}>
               Explanation (Optional)
@@ -265,7 +604,7 @@ export default function TicketActionsList({
               onChange={(e) => setExplanation(e.target.value)}
               placeholder="Provide details about this action..."
               rows={4}
-              className={`w-full px-4 py-3 rounded-xl text-sm transition-all resize-none ${colors.inputBg} border ${colors.inputBorder} ${colors.inputText} ${colors.inputPlaceholder}`}
+              className={`w-full px-4 py-3 rounded-xl text-sm transition-all resize-none ${colors.inputBg} border ${colors.inputBorder} ${colors.inputText} ${colors.inputPlaceholder} ${colors.inputFocusBg}`}
             />
           </div>
         )}
@@ -281,7 +620,7 @@ export default function TicketActionsList({
               onChange={(e) => setBlockerDescription(e.target.value)}
               placeholder="Describe what's blocking progress..."
               rows={4}
-              className={`w-full px-4 py-3 rounded-xl text-sm transition-all resize-none ${colors.inputBg} border ${colors.inputBorder} ${colors.inputText} ${colors.inputPlaceholder}`}
+              className={`w-full px-4 py-3 rounded-xl text-sm transition-all resize-none ${colors.inputBg} border ${colors.inputBorder} ${colors.inputText} ${colors.inputPlaceholder} ${colors.inputFocusBg}`}
               required
             />
           </div>
@@ -313,8 +652,8 @@ export default function TicketActionsList({
                     key={employee._id}
                     className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-300 border-2 ${
                       selectedEmployees.includes(employee._id)
-                        ? `bg-gradient-to-br ${charColors.bg} ${charColors.border} scale-[1.02]`
-                        : `${colors.inputBg} ${colors.borderSubtle} hover:border-opacity-60`
+                        ? `bg-gradient-to-br ${charColors.bg} ${charColors.border}`
+                        : `${colors.inputBg} ${colors.borderSubtle}`
                     }`}
                   >
                     <input
@@ -349,27 +688,33 @@ export default function TicketActionsList({
           </div>
         )}
 
-        {/* Action Buttons */}
+        {/* Action Buttons - THEME COMPLIANT (NO SCALE) */}
         <div className="flex gap-3 pt-4">
           <button
             onClick={() => {
               setSelectedAction(null);
               setExplanation('');
               setBlockerDescription('');
+              setRevertMessage('');
+              setRevertFiles([]);
+              setForwardMessage('');
+              setForwardFiles([]);
               setSelectedEmployees([]);
             }}
-            className={`group relative flex-1 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 hover:scale-105 overflow-hidden border-2 ${colors.inputBg} ${colors.inputBorder} ${colors.textPrimary}`}
+            className={`group relative flex-1 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 overflow-hidden border-2 ${colors.inputBg} ${colors.inputBorder} ${colors.textPrimary} flex items-center justify-center gap-2`}
           >
+            <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
             <div 
               className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
               style={{ boxShadow: `inset 0 0 20px ${colors.glowSecondary}` }}
             ></div>
+            <X className="w-4 h-4 relative z-10 group-hover:rotate-90 transition-all duration-300" />
             <span className="relative z-10">Back</span>
           </button>
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className={`group relative flex-1 px-6 py-3 rounded-xl font-bold text-sm transition-transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText} overflow-hidden`}
+            className={`group relative flex-1 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText} flex items-center justify-center gap-2`}
           >
             <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
             <div 
@@ -383,7 +728,7 @@ export default function TicketActionsList({
               </>
             ) : (
               <>
-                <Send className="w-4 h-4 relative z-10" />
+                <Send className="w-4 h-4 relative z-10 group-hover:rotate-12 group-hover:translate-x-1 transition-all duration-300" />
                 <span className="relative z-10">Confirm Action</span>
               </>
             )}
@@ -417,6 +762,7 @@ export default function TicketActionsList({
   }
 
   const nextNode = getNextNode();
+  const prevNode = getPrevNode();
 
   return (
     <div className="grid grid-cols-2 gap-3">
@@ -426,6 +772,7 @@ export default function TicketActionsList({
           label="Mark In Progress"
           description="Start working on ticket"
           character={cardCharacters.completed}
+          colors={colors}
           onClick={() => handleActionClick('mark_in_progress')}
         />
       )}
@@ -436,7 +783,19 @@ export default function TicketActionsList({
           label={nextNode.type === 'end' ? 'Complete' : `Forward to ${nextNode.data?.label || 'Next'}`}
           description={nextNode.type === 'end' ? 'Mark as resolved' : 'Move to next stage'}
           character={cardCharacters.informative}
+          colors={colors}
           onClick={() => handleActionClick('forward')}
+        />
+      )}
+
+      {availableActions.includes('revert') && prevNode && (
+        <ActionButton
+          icon={<Undo2 className="w-5 h-5" />}
+          label={`Revert to ${prevNode.data?.label || 'Previous'}`}
+          description="Send back for rework"
+          character={cardCharacters.interactive}
+          colors={colors}
+          onClick={() => handleActionClick('revert')}
         />
       )}
 
@@ -446,6 +805,7 @@ export default function TicketActionsList({
           label="Report Blocker"
           description="Flag an issue"
           character={cardCharacters.interactive}
+          colors={colors}
           onClick={() => handleActionClick('report_blocker')}
         />
       )}
@@ -456,6 +816,7 @@ export default function TicketActionsList({
           label="Reassign"
           description="Assign to another"
           character={cardCharacters.authoritative}
+          colors={colors}
           onClick={() => handleActionClick('reassign')}
         />
       )}
@@ -466,6 +827,7 @@ export default function TicketActionsList({
           label="Form Group"
           description="Create team"
           character={cardCharacters.creative}
+          colors={colors}
           onClick={() => handleActionClick('form_group')}
         />
       )}
@@ -476,6 +838,7 @@ export default function TicketActionsList({
           label="Resolve Blocker"
           description="Mark blocker resolved"
           character={cardCharacters.completed}
+          colors={colors}
           onClick={() => handleActionClick('blocker_resolved')}
         />
       )}
@@ -483,14 +846,12 @@ export default function TicketActionsList({
   );
 }
 
-// Action Button Component
-function ActionButton({ icon, label, description, character, onClick }: any) {
-  const { colors } = useTheme();
-  
+// Action Button Component - THEME COMPLIANT (NO SCALE)
+function ActionButton({ icon, label, description, character, colors, onClick }: any) {
   return (
     <button
       onClick={onClick}
-      className={`group relative p-4 rounded-xl border-2 transition-all hover:scale-105 text-left overflow-hidden bg-gradient-to-br ${character.bg} ${character.border}`}
+      className={`group relative p-4 rounded-xl border-2 transition-all duration-300 text-left overflow-hidden bg-gradient-to-br ${character.bg} ${character.border}`}
     >
       <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.03]`}></div>
       <div 
@@ -500,9 +861,11 @@ function ActionButton({ icon, label, description, character, onClick }: any) {
       
       <div className="relative">
         <div 
-          className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 transition-transform group-hover:scale-110 bg-gradient-to-r ${character.bg} ${character.iconColor}`}
+          className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 bg-gradient-to-r ${character.bg} ${character.iconColor}`}
         >
-          {icon}
+          {React.cloneElement(icon, {
+            className: `w-5 h-5 group-hover:rotate-12 transition-all duration-300`
+          })}
         </div>
         <p className={`font-bold ${character.text} mb-1`}>{label}</p>
         <p className={`text-xs ${colors.textMuted}`}>

@@ -1,12 +1,12 @@
-// ============================================
 // app/api/tickets/[id]/form-group/route.ts
-// NEW ENDPOINT - Handle group formation at current stage
-// ============================================
+// VERSION: 2025-01-19-WITH-EMAIL-NOTIFICATIONS
+// Adds email notifications when group is formed
 
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongoose';
 import Ticket from '@/models/Ticket';
 import FormData from '@/models/FormData';
+import { sendGroupFormedEmail } from '@/app/utils/sendTicketNotification';
 
 function isFirstEmployeeNode(nodeId: string, workflow: any): boolean {
   const startNode = workflow.nodes.find((n: any) => n.type === 'start');
@@ -30,7 +30,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  console.log('\n👥 FORM GROUP ROUTE - Version 2025-12-24\n');
+  console.log('\n👥 FORM GROUP ROUTE - WITH EMAIL NOTIFICATIONS\n');
   
   try {
     await dbConnect();
@@ -192,8 +192,16 @@ export async function POST(
     console.log(`\n✅ GROUP FORMED SUCCESSFULLY!`);
     console.log(`   Lead: ${performedBy.name}`);
     console.log(`   Members: ${allMemberIds.length} total`);
-    console.log(`   Primary Credit: ${ticket.primaryCredit?.name || 'None'}`);
-    console.log(`   Secondary Credits: ${ticket.secondaryCredits.length}`);
+
+    // 📧 SEND EMAIL NOTIFICATIONS
+    try {
+      const ticketObject = ticket.toObject();
+      await sendGroupFormedEmail(ticketObject, performedBy, groupMembersForHistory, FormData);
+      console.log('✅ Group formation emails sent to all members');
+    } catch (emailError) {
+      console.error('❌ Group formation emails failed:', emailError);
+    }
+
     console.log('\n');
 
     return NextResponse.json({

@@ -109,7 +109,7 @@ export default function HRHeadSidebar({ activeItem, onItemClick, isOpen, onClose
     label: 'Manage Users',
     icon: <Users className="h-3.5 w-3.5" />,
     color: theme === 'dark' ? '#64B5F6' : '#2196F3',
-    visible: true
+    visible: false
   },
 
   // Process
