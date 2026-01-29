@@ -6,6 +6,7 @@ export interface User {
   department: string;
   title: string;
   isDeptHead: boolean;
+  isExecutive: boolean | null;
   isApproved: boolean;
   employeeNumber: string;
   joiningDate?: string;
@@ -113,13 +114,22 @@ export interface EditUserForm {
   department: string;
   title: string;
   isDeptHead: boolean;
+  isExecutive: boolean | null;
   isApproved: boolean;
 }
 
 export interface UserFilters {
   searchTerm: string;
   departmentFilter: string;
-  approvalFilter: string;
-  roleFilter: string;
-  sortBy: string;
+  approvalFilter: 'all' | 'approved' | 'unapproved';
+  roleFilter: 'all' | 'depthead' | 'employee' | 'executive';
+  sortBy: 'name' | 'department' | 'employeeNumber' | 'status';
+}
+
+export interface ExecutiveDepartments {
+  userId: string;
+  username: string;
+  departments: string[];
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
 }

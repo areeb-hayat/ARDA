@@ -1,6 +1,4 @@
 // app/api/admin/users/route.ts
-// UPDATE THIS FILE TO FETCH FROM FORMDATAS COLLECTION
-
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongoose';
 import mongoose from 'mongoose';
@@ -10,7 +8,7 @@ export async function GET(request: NextRequest) {
     await dbConnect();
     const db = mongoose.connection.db;
     
-    // Fetch from formdatas collection, not users
+    // Fetch from formdatas collection
     const formdatasCollection = db.collection('formdatas');
     
     const users = await formdatasCollection.find({}).toArray();
@@ -30,7 +28,7 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const { userId, department, title, isDeptHead, isApproved } = await request.json();
+    const { userId, department, title, isDeptHead, isExecutive, isApproved } = await request.json();
 
     if (!userId) {
       return NextResponse.json(
@@ -47,6 +45,7 @@ export async function PATCH(request: NextRequest) {
     if (department !== undefined) updateData.department = department;
     if (title !== undefined) updateData.title = title;
     if (isDeptHead !== undefined) updateData.isDeptHead = isDeptHead;
+    if (isExecutive !== undefined) updateData.isExecutive = isExecutive;
     if (isApproved !== undefined) updateData.isApproved = isApproved;
     updateData.updatedAt = new Date();
 
@@ -61,6 +60,12 @@ export async function PATCH(request: NextRequest) {
         { error: 'User not found' },
         { status: 404 }
       );
+    }
+
+    // If isExecutive was set to false or null, clean up executive departments
+    if (isExecutive === false || isExecutive === null) {
+      const executiveDepartmentsCollection = db.collection('executivedepartments');
+      await executiveDepartmentsCollection.deleteOne({ userId });
     }
 
     return NextResponse.json(
@@ -91,8 +96,11 @@ export async function DELETE(request: NextRequest) {
     await dbConnect();
     const db = mongoose.connection.db;
     const formdatasCollection = db.collection('formdatas');
+    const executiveDepartmentsCollection = db.collection('executivedepartments');
 
     const { ObjectId } = require('mongodb');
+    
+    // Delete user
     const result = await formdatasCollection.deleteOne(
       { _id: new ObjectId(userId) }
     );
@@ -103,6 +111,9 @@ export async function DELETE(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    // Also delete executive departments if they exist
+    await executiveDepartmentsCollection.deleteOne({ userId });
 
     return NextResponse.json(
       { message: 'User deleted successfully' },

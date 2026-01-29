@@ -87,6 +87,9 @@ export default function LoginFormSection() {
           case 'admin':
             route = '/admin/dashboard';
             break;
+          case 'executive':
+            route = '/executive/dashboard';
+            break;
           case 'depthead.hr':
             route = '/hr-head/dashboard';
             break;
@@ -108,6 +111,7 @@ export default function LoginFormSection() {
           role: data.user.role,
           department: data.user.department,
           isDeptHead: data.user.isDeptHead,
+          isExecutive: data.user.isExecutive,
           route: route
         });
 

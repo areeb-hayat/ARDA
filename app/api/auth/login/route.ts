@@ -4,7 +4,7 @@ import bcrypt from 'bcrypt';
 import dbConnect from '@/lib/mongoose';
 import FormData from '@/models/FormData';
 
-type UserRole = 'employee.other' | 'employee.hr' | 'depthead.hr' | 'depthead.other' | 'admin';
+type UserRole = 'employee.other' | 'employee.hr' | 'depthead.hr' | 'depthead.other' | 'executive' | 'admin';
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
       console.log('Employee department:', employee.department);
       console.log('Employee title:', employee.title);
       console.log('Employee isDeptHead:', employee.isDeptHead);
+      console.log('Employee isExecutive:', employee.isExecutive);
       console.log('Password exists:', employee.password ? 'Yes' : 'No');
     }
 
@@ -69,18 +70,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Determine role based on department, title, and isDeptHead
+    // Determine role based on department, title, isExecutive, and isDeptHead
     let role: UserRole = 'employee.other';
     
     const titleLower = employee.title?.toLowerCase() || '';
     const deptLower = employee.department?.toLowerCase() || '';
     
-    // PRIORITY 1: Check if super user department (exact match, case-insensitive)
-    if (deptLower === 'super user') {
+    // PRIORITY 1: Check if executive
+    if (employee.isExecutive === true) {
+      role = 'executive';
+      console.log('User is executive - assigned executive role');
+    }
+    // PRIORITY 2: Check if super user department (exact match, case-insensitive)
+    else if (deptLower === 'super user') {
       role = 'admin';
       console.log('User is super user - assigned admin role');
     }
-    // PRIORITY 2: Check if HR department
+    // PRIORITY 3: Check if HR department
     else if (deptLower.includes('human resources') || 
              deptLower === 'hr' ||
              deptLower === 'human resource') {
@@ -92,7 +98,7 @@ export async function POST(request: NextRequest) {
         console.log('User is HR employee');
       }
     }
-    // PRIORITY 3: Other departments (including "admin" department)
+    // PRIORITY 4: Other departments (including "admin" department)
     else {
       if (employee.isDeptHead) {
         role = 'depthead.other';
@@ -111,6 +117,7 @@ export async function POST(request: NextRequest) {
       department: employee.department,
       title: employee.title,
       isDeptHead: employee.isDeptHead,
+      isExecutive: employee.isExecutive,
       photoUrl: employee.basicDetails?.profileImage,
       email: employee.contactInformation?.email,
       phone: employee.contactInformation?.contactNumber,
@@ -119,6 +126,7 @@ export async function POST(request: NextRequest) {
 
     console.log('Login successful. Role assigned:', role);
     console.log('Department:', employee.department);
+    console.log('Is Executive:', employee.isExecutive);
 
     return NextResponse.json({
       success: true,

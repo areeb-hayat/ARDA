@@ -1,8 +1,8 @@
 // app/components/ManageUsersContent/UserTableRow.tsx
 'use client';
 
-import React, { useState } from 'react';
-import { Edit2, Trash2, X, Check, Eye, EyeOff, Key, CheckCircle, XCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Edit2, Trash2, X, Check, Eye, EyeOff, Key, CheckCircle, XCircle, Building2 } from 'lucide-react';
 import { User, EditUserForm } from './types';
 import { useTheme } from '@/app/context/ThemeContext';
 
@@ -38,10 +38,35 @@ export default function UserTableRow({
   const urgentColors = cardCharacters.urgent;
   const successColors = cardCharacters.completed;
   const warningColors = cardCharacters.interactive;
+  const executiveColors = cardCharacters.creative;
   
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [newPassword, setNewPassword] = useState('');
+  const [executiveDepartments, setExecutiveDepartments] = useState<string[]>([]);
+  const [loadingDepartments, setLoadingDepartments] = useState(false);
+
+  // Load executive departments when editing an executive
+  useEffect(() => {
+    if (isEditing && editForm.isExecutive) {
+      loadExecutiveDepartments();
+    }
+  }, [isEditing, editForm.isExecutive, user._id]);
+
+  const loadExecutiveDepartments = async () => {
+    setLoadingDepartments(true);
+    try {
+      const response = await fetch(`/api/admin/executive-departments?userId=${user._id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setExecutiveDepartments(data.departments || []);
+      }
+    } catch (error) {
+      console.error('Error loading executive departments:', error);
+    } finally {
+      setLoadingDepartments(false);
+    }
+  };
 
   const handlePasswordUpdate = async () => {
     if (!newPassword.trim()) {
@@ -69,6 +94,36 @@ export default function UserTableRow({
     }
   };
 
+  const handleExecutiveDepartmentToggle = (dept: string) => {
+    setExecutiveDepartments(prev => 
+      prev.includes(dept) 
+        ? prev.filter(d => d !== dept)
+        : [...prev, dept]
+    );
+  };
+
+  const handleSaveEdit = async () => {
+    // If executive, save department assignments
+    if (editForm.isExecutive) {
+      try {
+        await fetch('/api/admin/executive-departments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user._id,
+            username: user.username,
+            departments: executiveDepartments
+          })
+        });
+      } catch (error) {
+        console.error('Error saving executive departments:', error);
+      }
+    }
+    
+    // Call parent save handler
+    onSaveEdit(user._id);
+  };
+
   const handleRowClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.closest('button') || target.closest('input') || target.closest('select')) {
@@ -79,86 +134,187 @@ export default function UserTableRow({
     }
   };
 
+  const getRoleBadge = () => {
+    if (user.isExecutive) {
+      return (
+        <span className={`inline-block px-2 py-0.5 rounded-lg text-xs font-bold border ${executiveColors.border} ${executiveColors.bg} ${executiveColors.text}`}>
+          Executive
+        </span>
+      );
+    }
+    if (user.isDeptHead) {
+      return (
+        <span className={`inline-block px-2 py-0.5 rounded-lg text-xs font-bold border ${warningColors.border} ${warningColors.bg} ${warningColors.text}`}>
+          Dept Head
+        </span>
+      );
+    }
+    return (
+      <span className={`inline-block px-2 py-0.5 rounded-lg text-xs border ${cardCharacters.neutral.border} ${cardCharacters.neutral.bg} ${cardCharacters.neutral.text}`}>
+        Employee
+      </span>
+    );
+  };
+
   if (isEditing) {
     return (
-      <tr className={`${charColors.hoverBg} transition-colors`}>
-        <td className={`px-4 py-3 ${colors.textPrimary} font-semibold whitespace-nowrap text-sm`}>
-          {user.employeeNumber || 'N/A'}
-        </td>
-        <td className={`px-4 py-3 ${colors.textPrimary} font-semibold whitespace-nowrap text-sm`}>
-          {user.basicDetails?.name || 'N/A'}
-        </td>
-        <td className={`px-4 py-3 ${charColors.accent} whitespace-nowrap text-sm`}>
-          {user.username}
-        </td>
-        <td className="px-4 py-3 whitespace-nowrap">
-          <select
-            value={editForm.department}
-            onChange={(e) => onEditFormChange({ ...editForm, department: e.target.value })}
-            className={`px-2 py-1.5 rounded border-2 text-xs ${colors.inputBg} ${colors.inputBorder} ${colors.inputText}`}
-          >
-            {departments.map(dept => (
-              <option key={dept} value={dept}>{dept}</option>
-            ))}
-          </select>
-        </td>
-        <td className="px-4 py-3 whitespace-nowrap">
-          <input
-            type="text"
-            value={editForm.title}
-            onChange={(e) => onEditFormChange({ ...editForm, title: e.target.value })}
-            className={`px-2 py-1.5 rounded border-2 text-xs w-full ${colors.inputBg} ${colors.inputBorder} ${colors.inputText}`}
-          />
-        </td>
-        <td className="px-4 py-3 whitespace-nowrap">
-          <label className="flex items-center gap-1.5">
+      <>
+        <tr className={`${charColors.hoverBg} transition-colors`}>
+          <td className={`px-4 py-3 ${colors.textPrimary} font-semibold whitespace-nowrap text-sm`}>
+            {user.employeeNumber || 'N/A'}
+          </td>
+          <td className={`px-4 py-3 ${colors.textPrimary} font-semibold whitespace-nowrap text-sm`}>
+            {user.basicDetails?.name || 'N/A'}
+          </td>
+          <td className={`px-4 py-3 ${charColors.accent} whitespace-nowrap text-sm`}>
+            {user.username}
+          </td>
+          <td className="px-4 py-3 whitespace-nowrap">
             <input
-              type="checkbox"
-              checked={editForm.isDeptHead || false}
-              onChange={(e) => onEditFormChange({ ...editForm, isDeptHead: e.target.checked })}
-              className={`w-3.5 h-3.5 rounded ${theme === 'light' ? 'accent-blue-600' : 'accent-blue-400'}`}
+              type="text"
+              list="departments-list"
+              value={editForm.department}
+              onChange={(e) => onEditFormChange({ ...editForm, department: e.target.value })}
+              className={`px-2 py-1.5 rounded border-2 text-xs w-full ${colors.inputBg} ${colors.inputBorder} ${colors.inputText}`}
+              placeholder="Type or select department"
+              disabled={editForm.isExecutive === true}
             />
-            <span className={`${colors.textPrimary} text-xs`}>Dept Head</span>
-          </label>
-        </td>
-        <td className="px-4 py-3 whitespace-nowrap">
-          <label className="flex items-center gap-1.5">
+            <datalist id="departments-list">
+              {departments.map(dept => (
+                <option key={dept} value={dept} />
+              ))}
+            </datalist>
+            {editForm.isExecutive && (
+              <p className={`text-[10px] ${colors.textMuted} mt-0.5`}>
+                Executive home dept
+              </p>
+            )}
+          </td>
+          <td className="px-4 py-3 whitespace-nowrap">
             <input
-              type="checkbox"
-              checked={editForm.isApproved || false}
-              onChange={(e) => onEditFormChange({ ...editForm, isApproved: e.target.checked })}
-              className={`w-3.5 h-3.5 rounded ${theme === 'light' ? 'accent-blue-600' : 'accent-blue-400'}`}
+              type="text"
+              value={editForm.title}
+              onChange={(e) => onEditFormChange({ ...editForm, title: e.target.value })}
+              className={`px-2 py-1.5 rounded border-2 text-xs w-full ${colors.inputBg} ${colors.inputBorder} ${colors.inputText}`}
             />
-            <span className={`${colors.textPrimary} text-xs`}>Approved</span>
-          </label>
-        </td>
-        <td className="px-4 py-3 whitespace-nowrap">
-          <div className="flex gap-1.5">
-            <button
-              onClick={() => onSaveEdit(user._id)}
-              className={`group relative p-1.5 rounded-lg transition-all hover:scale-105 overflow-hidden border-2 ${successColors.border} ${successColors.bg}`}
-              title="Save"
-            >
-              <div 
-                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                style={{ boxShadow: `inset 0 0 14px ${colors.glowSuccess}` }}
-              ></div>
-              <Check className={`h-3.5 w-3.5 relative z-10 ${successColors.iconColor}`} />
-            </button>
-            <button
-              onClick={onCancelEdit}
-              className={`group relative p-1.5 rounded-lg transition-all hover:scale-105 overflow-hidden border-2 ${urgentColors.border} ${urgentColors.bg}`}
-              title="Cancel"
-            >
-              <div 
-                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                style={{ boxShadow: `inset 0 0 14px ${colors.glowWarning}` }}
-              ></div>
-              <X className={`h-3.5 w-3.5 relative z-10 ${urgentColors.iconColor}`} />
-            </button>
-          </div>
-        </td>
-      </tr>
+          </td>
+          <td className="px-4 py-3 whitespace-nowrap">
+            <div className="space-y-1">
+              <label className="flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  checked={editForm.isExecutive || false}
+                  onChange={(e) => {
+                    const isExec = e.target.checked;
+                    onEditFormChange({ 
+                      ...editForm, 
+                      isExecutive: isExec,
+                      isDeptHead: isExec ? false : editForm.isDeptHead // Clear dept head if executive
+                    });
+                    if (!isExec) {
+                      setExecutiveDepartments([]);
+                    }
+                  }}
+                  className={`w-3.5 h-3.5 rounded ${theme === 'light' ? 'accent-purple-600' : 'accent-purple-400'}`}
+                />
+                <span className={`${executiveColors.text} text-xs font-bold`}>Executive</span>
+              </label>
+              {!editForm.isExecutive && (
+                <label className="flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={editForm.isDeptHead || false}
+                    onChange={(e) => onEditFormChange({ ...editForm, isDeptHead: e.target.checked })}
+                    className={`w-3.5 h-3.5 rounded ${theme === 'light' ? 'accent-blue-600' : 'accent-blue-400'}`}
+                  />
+                  <span className={`${colors.textPrimary} text-xs`}>Dept Head</span>
+                </label>
+              )}
+            </div>
+          </td>
+          <td className="px-4 py-3 whitespace-nowrap">
+            <label className="flex items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={editForm.isApproved || false}
+                onChange={(e) => onEditFormChange({ ...editForm, isApproved: e.target.checked })}
+                className={`w-3.5 h-3.5 rounded ${theme === 'light' ? 'accent-blue-600' : 'accent-blue-400'}`}
+              />
+              <span className={`${colors.textPrimary} text-xs`}>Approved</span>
+            </label>
+          </td>
+          <td className="px-4 py-3 whitespace-nowrap">
+            <div className="flex gap-1.5">
+              <button
+                onClick={handleSaveEdit}
+                className={`group relative p-1.5 rounded-lg transition-all hover:scale-105 overflow-hidden border-2 ${successColors.border} ${successColors.bg}`}
+                title="Save"
+              >
+                <div 
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{ boxShadow: `inset 0 0 14px ${colors.glowSuccess}` }}
+                ></div>
+                <Check className={`h-3.5 w-3.5 relative z-10 ${successColors.iconColor}`} />
+              </button>
+              <button
+                onClick={onCancelEdit}
+                className={`group relative p-1.5 rounded-lg transition-all hover:scale-105 overflow-hidden border-2 ${urgentColors.border} ${urgentColors.bg}`}
+                title="Cancel"
+              >
+                <div 
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{ boxShadow: `inset 0 0 14px ${colors.glowWarning}` }}
+                ></div>
+                <X className={`h-3.5 w-3.5 relative z-10 ${urgentColors.iconColor}`} />
+              </button>
+            </div>
+          </td>
+        </tr>
+        
+        {/* Executive Department Selection Row */}
+        {editForm.isExecutive && (
+          <tr className={`${charColors.hoverBg}`}>
+            <td colSpan={8} className="px-4 py-3">
+              <div className={`p-3 rounded-lg border-2 ${executiveColors.border} ${executiveColors.bg} bg-opacity-20`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Building2 className={`h-4 w-4 ${executiveColors.iconColor}`} />
+                  <span className={`text-xs font-bold ${executiveColors.text}`}>
+                    Executive Department Access
+                  </span>
+                  <span className={`text-[10px] ${colors.textMuted}`}>
+                    ({executiveDepartments.length} selected)
+                  </span>
+                </div>
+                
+                {loadingDepartments ? (
+                  <p className={`text-xs ${colors.textMuted}`}>Loading departments...</p>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                    {departments.map(dept => (
+                      <label 
+                        key={dept}
+                        className={`flex items-center gap-1.5 px-2 py-1.5 rounded border cursor-pointer transition-all ${
+                          executiveDepartments.includes(dept)
+                            ? `${executiveColors.border} ${executiveColors.bg} ${executiveColors.text}`
+                            : `${colors.inputBorder} ${colors.inputBg} ${colors.textSecondary}`
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={executiveDepartments.includes(dept)}
+                          onChange={() => handleExecutiveDepartmentToggle(dept)}
+                          className={`w-3 h-3 rounded ${theme === 'light' ? 'accent-purple-600' : 'accent-purple-400'}`}
+                        />
+                        <span className="text-[11px] font-semibold truncate">{dept}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </td>
+          </tr>
+        )}
+      </>
     );
   }
 
@@ -186,15 +342,7 @@ export default function UserTableRow({
           {user.title || 'N/A'}
         </td>
         <td className="px-4 py-3 whitespace-nowrap">
-          {user.isDeptHead ? (
-            <span className={`inline-block px-2 py-0.5 rounded-lg text-xs font-bold border ${warningColors.border} ${warningColors.bg} ${warningColors.text}`}>
-              Dept Head
-            </span>
-          ) : (
-            <span className={`inline-block px-2 py-0.5 rounded-lg text-xs border ${cardCharacters.neutral.border} ${cardCharacters.neutral.bg} ${cardCharacters.neutral.text}`}>
-              Employee
-            </span>
-          )}
+          {getRoleBadge()}
         </td>
         <td className="px-4 py-3 whitespace-nowrap">
           <button

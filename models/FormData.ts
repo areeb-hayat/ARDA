@@ -73,6 +73,7 @@ interface IFormData extends Document {
   department: string;
   title: string;
   isDeptHead: boolean;
+  isExecutive: boolean | null;
 
   basicDetails: {
     title: string;
@@ -217,6 +218,10 @@ const FormDataSchema = new Schema<IFormData>({
     type: Boolean,
     default: false,
   },
+  isExecutive: {
+    type: Boolean,
+    default: null,
+  },
 
   basicDetails: {
     title: String,
@@ -287,6 +292,9 @@ FormDataSchema.index({ status: 1, createdAt: -1 });
 
 // Department head queries
 FormDataSchema.index({ isDeptHead: 1, department: 1 });
+
+// Executive queries (multi-department access)
+FormDataSchema.index({ isExecutive: 1 });
 
 // Employee number lookup (unique identifier in HR systems)
 FormDataSchema.index({ employeeNumber: 1 });

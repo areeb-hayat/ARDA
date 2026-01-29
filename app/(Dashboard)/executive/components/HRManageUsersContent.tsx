@@ -1,13 +1,12 @@
-// app/(Dashboard)/admin/components/HRManageUsersContent.tsx
+// app/(Dashboard)/hr-employee/components/HRManageUsersContent.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Users, Upload, ArrowLeft, RefreshCw, Filter, Search, X, UserPlus } from 'lucide-react';
+import { Users, Upload, ArrowLeft, RefreshCw, Filter, Search, X } from 'lucide-react';
 import { useTheme } from '@/app/context/ThemeContext';
 import UserTableRow from '@/app/components/ManageUsersContent/UserTableRow';
 import BulkUserUpload from '@/app/components/ManageUsersContent/BulkUserUpload';
 import UserDetailModal from '@/app/components/ManageUsersContent/UserDetailModal';
-import AddUserModal from '@/app/components/ManageUsersContent/AddUserModal';
 import { User, EditUserForm, UserFilters as FilterTypes } from '@/app/components/ManageUsersContent/types';
 
 interface ManageUsersContentProps {
@@ -16,14 +15,13 @@ interface ManageUsersContentProps {
 }
 
 export default function ManageUsersContent({ initialFilter, onBack }: ManageUsersContentProps) {
-  const { colors, cardCharacters, showToast } = useTheme();
+  const { colors, cardCharacters } = useTheme();
   const charColors = cardCharacters.informative;
   
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
-  const [showAddUser, setShowAddUser] = useState(false);
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [departments, setDepartments] = useState<string[]>([]);
@@ -37,12 +35,11 @@ export default function ManageUsersContent({ initialFilter, onBack }: ManageUser
     sortBy: 'name'
   });
 
-  // Edit user state - UPDATED to include isExecutive
+  // Edit user state
   const [editUser, setEditUser] = useState<EditUserForm>({
     department: '',
     title: '',
     isDeptHead: false,
-    isExecutive: null,
     isApproved: false
   });
 
@@ -104,13 +101,9 @@ export default function ManageUsersContent({ initialFilter, onBack }: ManageUser
     }
 
     if (filters.roleFilter !== 'all') {
-      if (filters.roleFilter === 'executive') {
-        filtered = filtered.filter(user => user.isExecutive === true);
-      } else if (filters.roleFilter === 'depthead') {
-        filtered = filtered.filter(user => user.isDeptHead && !user.isExecutive);
-      } else if (filters.roleFilter === 'employee') {
-        filtered = filtered.filter(user => !user.isDeptHead && !user.isExecutive);
-      }
+      filtered = filtered.filter(user =>
+        filters.roleFilter === 'depthead' ? user.isDeptHead : !user.isDeptHead
+      );
     }
 
     filtered.sort((a, b) => {
@@ -144,13 +137,13 @@ export default function ManageUsersContent({ initialFilter, onBack }: ManageUser
       if (response.ok) {
         setEditingUser(null);
         fetchUsers();
-        showToast('User updated successfully', 'success');
+        alert('User updated successfully');
       } else {
-        showToast('Failed to update user', 'error');
+        alert('Failed to update user');
       }
     } catch (error) {
       console.error('Error updating user:', error);
-      showToast('Failed to update user', 'error');
+      alert('Failed to update user');
     }
   };
 
@@ -166,13 +159,13 @@ export default function ManageUsersContent({ initialFilter, onBack }: ManageUser
 
       if (response.ok) {
         fetchUsers();
-        showToast('User deleted successfully', 'success');
+        alert('User deleted successfully');
       } else {
-        showToast('Failed to delete user', 'error');
+        alert('Failed to delete user');
       }
     } catch (error) {
       console.error('Error deleting user:', error);
-      showToast('Failed to delete user', 'error');
+      alert('Failed to delete user');
     }
   };
 
@@ -186,13 +179,12 @@ export default function ManageUsersContent({ initialFilter, onBack }: ManageUser
 
       if (response.ok) {
         fetchUsers();
-        showToast(`User ${!currentStatus ? 'approved' : 'unapproved'} successfully`, 'success');
       } else {
-        showToast('Failed to update approval status', 'error');
+        alert('Failed to update approval status');
       }
     } catch (error) {
       console.error('Error toggling approval:', error);
-      showToast('Failed to update approval status', 'error');
+      alert('Failed to update approval status');
     }
   };
 
@@ -202,7 +194,6 @@ export default function ManageUsersContent({ initialFilter, onBack }: ManageUser
       department: user.department,
       title: user.title,
       isDeptHead: user.isDeptHead,
-      isExecutive: user.isExecutive,
       isApproved: user.isApproved
     });
   };
@@ -304,37 +295,20 @@ export default function ManageUsersContent({ initialFilter, onBack }: ManageUser
               </div>
             </div>
             
-            {/* Action Buttons */}
-            <div className="flex items-center space-x-3">
-              {/* Add User Button */}
-              <button
-                onClick={() => setShowAddUser(true)}
-                className={`group relative flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-300 overflow-hidden bg-gradient-to-r ${cardCharacters.creative.bg} ${cardCharacters.creative.text} border ${cardCharacters.creative.border} ${colors.shadowCard} hover:${colors.shadowHover}`}
-              >
-                <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
-                <div 
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                  style={{ boxShadow: `inset 0 0 14px ${colors.glowSecondary}, inset 0 0 28px ${colors.glowSecondary}` }}
-                ></div>
-                <UserPlus className={`h-4 w-4 relative z-10 transition-transform duration-300 group-hover:rotate-12 ${cardCharacters.creative.iconColor}`} />
-                <span className="text-sm font-bold relative z-10">Add User</span>
-              </button>
-
-              {/* Refresh Button */}
-              <button
-                onClick={fetchUsers}
-                disabled={loading}
-                className={`group relative flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-300 overflow-hidden bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText} border border-transparent ${colors.shadowCard} hover:${colors.shadowHover} disabled:opacity-50`}
-              >
-                <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
-                <div 
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                  style={{ boxShadow: `inset 0 0 14px ${colors.glowPrimary}, inset 0 0 28px ${colors.glowPrimary}` }}
-                ></div>
-                <RefreshCw className={`h-4 w-4 relative z-10 transition-transform duration-300 ${loading ? 'animate-spin' : 'group-hover:rotate-180'}`} />
-                <span className="text-sm font-bold relative z-10">Refresh</span>
-              </button>
-            </div>
+            {/* Refresh Button */}
+            <button
+              onClick={fetchUsers}
+              disabled={loading}
+              className={`group relative flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-300 overflow-hidden bg-gradient-to-r ${colors.buttonPrimary} ${colors.buttonPrimaryText} border border-transparent ${colors.shadowCard} hover:${colors.shadowHover} disabled:opacity-50`}
+            >
+              <div className={`absolute inset-0 ${colors.paperTexture} opacity-[0.02]`}></div>
+              <div 
+                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                style={{ boxShadow: `inset 0 0 14px ${colors.glowPrimary}, inset 0 0 28px ${colors.glowPrimary}` }}
+              ></div>
+              <RefreshCw className={`h-4 w-4 relative z-10 transition-transform duration-300 ${loading ? 'animate-spin' : 'group-hover:rotate-180'}`} />
+              <span className="text-sm font-bold relative z-10">Refresh</span>
+            </button>
           </div>
 
           {/* Filters Section */}
@@ -390,14 +364,13 @@ export default function ManageUsersContent({ initialFilter, onBack }: ManageUser
                 <option value="unapproved">Pending Approval</option>
               </select>
 
-              {/* Role Filter - UPDATED to include executive */}
+              {/* Role Filter */}
               <select
                 value={filters.roleFilter}
                 onChange={(e) => handleFilterChange({ roleFilter: e.target.value as any })}
                 className={`px-3 py-2 rounded-lg text-xs transition-all cursor-pointer ${colors.inputBg} border ${colors.inputBorder} ${colors.inputText}`}
               >
                 <option value="all">All Roles</option>
-                <option value="executive">Executives</option>
                 <option value="depthead">Dept Heads</option>
                 <option value="employee">Employees</option>
               </select>
@@ -428,17 +401,6 @@ export default function ManageUsersContent({ initialFilter, onBack }: ManageUser
           </div>
         </div>
       </div>
-
-      {/* Add User Modal */}
-      {showAddUser && (
-        <AddUserModal
-          onClose={() => setShowAddUser(false)}
-          onSuccess={() => {
-            fetchUsers();
-          }}
-          departments={departments}
-        />
-      )}
 
       {/* Bulk Upload Modal */}
       {showBulkUpload && (
@@ -521,7 +483,7 @@ export default function ManageUsersContent({ initialFilter, onBack }: ManageUser
             <p className={`${colors.textPrimary} text-base font-semibold mb-2`}>No users found</p>
             <p className={`${colors.textMuted} text-sm`}>
               {users.length === 0 
-                ? 'Click "Add User" to create your first user' 
+                ? 'Upload a CSV or Excel file to add users' 
                 : 'Try adjusting your filters'}
             </p>
           </div>
