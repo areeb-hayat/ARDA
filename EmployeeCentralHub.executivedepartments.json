@@ -1,0 +1,446 @@
+[{
+  "_id": {
+    "$oid": "697b0a24b328d679f16ca491"
+  },
+  "userId": "6979bb383139c282e523ab95",
+  "createdAt": {
+    "$date": "2026-01-29T07:20:04.174Z"
+  },
+  "departments": [
+    "Administration - HBL",
+    "Information Technology - HBL",
+    "CEO Secretariat - HBL",
+    "Quality Control - NBL",
+    "Utilities - HBL",
+    "Sales - HBL Base",
+    "Warehouse & Logistics - HBL",
+    "Sales - HBL OUT",
+    "Sales - NBL",
+    "Quality Control - HBL",
+    "Key Accounts - HBL",
+    "Production - HBL",
+    "Production - NBL",
+    "Bulk Water - HBL"
+  ],
+  "updatedAt": {
+    "$date": "2026-01-29T11:12:42.380Z"
+  },
+  "username": "ali.navaiz@pepsiisb.com"
+},
+{
+  "_id": {
+    "$oid": "697b40fcb328d679f16ca493"
+  },
+  "userId": "6979bb383139c282e523ab88",
+  "createdAt": {
+    "$date": "2026-01-29T11:14:04.091Z"
+  },
+  "departments": [
+    "Administration - NBL",
+    "Cash - HBL",
+    "Cash - NBL",
+    "Finance - HBL",
+    "Market Research Development - HBL",
+    "Procurement - HBL"
+  ],
+  "updatedAt": {
+    "$date": "2026-01-29T11:14:04.091Z"
+  },
+  "username": "qasim.jaffery@pepsiisb.com"
+},
+{
+  "_id": {
+    "$oid": "697b413ab328d679f16ca494"
+  },
+  "userId": "6979bb383139c282e523abb0",
+  "createdAt": {
+    "$date": "2026-01-29T11:15:06.834Z"
+  },
+  "departments": [
+    "Utilities - HBL",
+    "Warehouse & Logistics - HBL",
+    "Production - HBL",
+    "Quality Control - HBL"
+  ],
+  "updatedAt": {
+    "$date": "2026-01-29T11:15:06.834Z"
+  },
+  "username": "moonis.eitezaz@pepsiisb.com"
+},
+{
+  "_id": {
+    "$oid": "697b41a4b328d679f16ca495"
+  },
+  "userId": "697afdffc22ef957048d2cf1",
+  "createdAt": {
+    "$date": "2026-01-29T11:16:52.898Z"
+  },
+  "departments": [
+    "Quality Control - NBL",
+    "Production - NBL",
+    "Administration - NBL",
+    "Warehouse & Logistics - HBL"
+  ],
+  "updatedAt": {
+    "$date": "2026-01-29T11:16:52.898Z"
+  },
+  "username": "munir.ahmed@pepsinbl.com"
+},
+{
+  "_id": {
+    "$oid": "697b43bab328d679f16ca496"
+  },
+  "userId": "697b437085beb1406479525e",
+  "createdAt": {
+    "$date": "2026-01-29T11:25:46.853Z"
+  },
+  "departments": [
+    "Administration - HBL",
+    "Quality Control - NBL",
+    "Utilities - HBL",
+    "Sales - HBL Base",
+    "Warehouse & Logistics - HBL",
+    "GTM - HBL",
+    "Sales - HBL OUT",
+    "Bulk Water - HBL",
+    "Production - HBL",
+    "Sales - NBL",
+    "CEO Secretariat - HBL",
+    "Information Technology - HBL",
+    "Production - NBL",
+    "Key Accounts - HBL",
+    "Quality Control - HBL",
+    "Procurement - HBL",
+    "Sales - HBL Base - Rawalpindi",
+    "Quality Control - Bplus",
+    "Warehouse - NBL",
+    "Sales - HBL OUT - Abbottabad",
+    "Production - Bplus",
+    "Sales - HBL OUT - Attock",
+    "Human Resource - HBL",
+    "Mess - HBL",
+    "Sales - HBL OUT - Kashmir",
+    "Sales - HBL Base - Islamabad",
+    "People & Culture",
+    "Utilities - NBL",
+    "Sales - HBL Base - RWP OUT",
+    "Sales Services - NBL",
+    "Sales Services - HBL",
+    "MEM - HBL",
+    "MIS - NBL",
+    "Procurement - NBL",
+    "Post Mix - HBL"
+  ],
+  "updatedAt": {
+    "$date": "2026-01-30T04:37:36.969Z"
+  },
+  "username": "ali.navaiz@pepsiisb.com"
+},
+{
+  "_id": {
+    "$oid": "697b43dfb328d679f16ca497"
+  },
+  "userId": "697b437085beb14064795251",
+  "createdAt": {
+    "$date": "2026-01-29T11:26:23.641Z"
+  },
+  "departments": [
+    "Administration - NBL",
+    "Cash - NBL",
+    "Market Research Development - HBL",
+    "Finance - HBL",
+    "Procurement - HBL",
+    "Cash - HBL",
+    "Tax - HBL",
+    "Excise - NBL",
+    "Accounts - HBL",
+    "Finance - NBL",
+    "Procurement - NBL"
+  ],
+  "updatedAt": {
+    "$date": "2026-01-30T04:39:10.641Z"
+  },
+  "username": "qasim.jaffery@pepsiisb.com"
+},
+{
+  "_id": {
+    "$oid": "697b4418b328d679f16ca498"
+  },
+  "userId": "697b437085beb14064795279",
+  "createdAt": {
+    "$date": "2026-01-29T11:27:20.505Z"
+  },
+  "departments": [
+    "Utilities - HBL",
+    "Warehouse & Logistics - HBL",
+    "Quality Control - HBL",
+    "Production - HBL",
+    "Quality Control - Bplus",
+    "E&I - HBL"
+  ],
+  "updatedAt": {
+    "$date": "2026-02-11T06:17:01.668Z"
+  },
+  "username": "moonis.eitezaz@pepsiisb.com"
+},
+{
+  "_id": {
+    "$oid": "697b44dfb328d679f16ca499"
+  },
+  "userId": "697b448085beb140647952d3",
+  "createdAt": {
+    "$date": "2026-01-29T11:30:39.874Z"
+  },
+  "departments": [
+    "Production - NBL",
+    "Quality Control - NBL",
+    "Administration - NBL",
+    "Utilities - NBL",
+    "Warehouse - NBL",
+    "Procurement - NBL"
+  ],
+  "updatedAt": {
+    "$date": "2026-01-30T04:49:55.913Z"
+  },
+  "username": "munir.ahmed@pepsinbl.com"
+},
+{
+  "_id": {
+    "$oid": "697b458ab328d679f16ca49a"
+  },
+  "userId": "697b454685beb140647952d5",
+  "createdAt": {
+    "$date": "2026-01-29T11:33:30.842Z"
+  },
+  "departments": [
+    "Sales - HBL Base",
+    "Key Accounts - HBL",
+    "Sales - HBL Base - Rawalpindi",
+    "Sales - HBL Base - RWP OUT",
+    "Sales - HBL Base - Islamabad",
+    "Sales Services - HBL"
+  ],
+  "updatedAt": {
+    "$date": "2026-01-30T04:51:51.695Z"
+  },
+  "username": "asim.zafar@pepsiisb.com"
+},
+{
+  "_id": {
+    "$oid": "697b478eb328d679f16ca49b"
+  },
+  "userId": "697b437085beb140647952bc",
+  "createdAt": {
+    "$date": "2026-01-29T11:42:06.410Z"
+  },
+  "departments": [
+    "Finance - HBL",
+    "Cash - HBL",
+    "Cash - NBL",
+    "Accounts - HBL",
+    "Finance - NBL"
+  ],
+  "updatedAt": {
+    "$date": "2026-01-30T04:39:58.038Z"
+  },
+  "username": "muhammad.bashir@pepsinbl.com"
+},
+{
+  "_id": {
+    "$oid": "697c3537b328d679f16ca49c"
+  },
+  "userId": "697b437085beb14064795247",
+  "createdAt": {
+    "$date": "2026-01-30T04:36:07.962Z"
+  },
+  "departments": [
+    "Audit - HBL",
+    "Audit - NBL"
+  ],
+  "updatedAt": {
+    "$date": "2026-01-30T04:36:07.962Z"
+  },
+  "username": "azam.shabeer@pepsiisb.com"
+},
+{
+  "_id": {
+    "$oid": "697c365db328d679f16ca49d"
+  },
+  "userId": "697b437085beb14064795252",
+  "createdAt": {
+    "$date": "2026-01-30T04:41:01.556Z"
+  },
+  "departments": [
+    "MEM - HBL",
+    "GTM - HBL"
+  ],
+  "updatedAt": {
+    "$date": "2026-01-30T04:41:01.556Z"
+  },
+  "username": "muhammad.nouman@pepsiisb.com"
+},
+{
+  "_id": {
+    "$oid": "697c381ab328d679f16ca49e"
+  },
+  "userId": "697b437085beb14064795267",
+  "createdAt": {
+    "$date": "2026-01-30T04:48:26.986Z"
+  },
+  "departments": [
+    "Procurement - HBL",
+    "Procurement - NBL"
+  ],
+  "updatedAt": {
+    "$date": "2026-01-30T04:48:26.986Z"
+  },
+  "username": "amir.butt@pepsiisb.com"
+},
+{
+  "_id": {
+    "$oid": "697c3899b328d679f16ca49f"
+  },
+  "userId": "697b437085beb140647952a2",
+  "createdAt": {
+    "$date": "2026-01-30T04:50:33.798Z"
+  },
+  "departments": [
+    "Quality Control - Bplus",
+    "Quality Control - HBL"
+  ],
+  "updatedAt": {
+    "$date": "2026-01-30T04:50:33.798Z"
+  },
+  "username": "Ghulam.rasool@pepsiisb.com"
+},
+{
+  "_id": {
+    "$oid": "697c3922b328d679f16ca4a0"
+  },
+  "userId": "697b437085beb14064795254",
+  "createdAt": {
+    "$date": "2026-01-30T04:52:50.415Z"
+  },
+  "departments": [
+    "Sales - HBL OUT - Kashmir",
+    "Sales - HBL OUT - Attock",
+    "Sales - HBL OUT - Abbottabad",
+    "Sales - HBL OUT",
+    "Sales Services - HBL"
+  ],
+  "updatedAt": {
+    "$date": "2026-01-30T04:52:50.415Z"
+  },
+  "username": "muhammad.shafqat@pepsiisb.com"
+},
+{
+  "_id": {
+    "$oid": "697c39d8b328d679f16ca4a1"
+  },
+  "userId": "697b437085beb1406479526b",
+  "createdAt": {
+    "$date": "2026-01-30T04:55:52.296Z"
+  },
+  "departments": [
+    "Warehouse - NBL",
+    "Warehouse & Logistics - HBL"
+  ],
+  "updatedAt": {
+    "$date": "2026-01-30T04:55:52.296Z"
+  },
+  "username": "masood.akhtar@pepsinbl.com"
+},
+{
+  "_id": {
+    "$oid": "697c444ab328d679f16ca4a2"
+  },
+  "userId": "697b437085beb14064795242",
+  "createdAt": {
+    "$date": "2026-01-30T05:40:26.301Z"
+  },
+  "departments": [
+    "Administration - HBL",
+    "Cash - HBL",
+    "Information Technology - HBL",
+    "Procurement - NBL",
+    "Sales - HBL Base",
+    "Sales - HBL OUT - Attock",
+    "Utilities - NBL",
+    "Warehouse & Logistics - HBL",
+    "Sales - HBL OUT - Kashmir",
+    "Sales - HBL Base - Islamabad",
+    "Production - HBL",
+    "Key Accounts - HBL",
+    "Cash - NBL",
+    "Administration - NBL",
+    "Audit - HBL",
+    "Finance - HBL",
+    "MEM - HBL",
+    "Production - NBL",
+    "Sales - HBL Base - RWP OUT",
+    "Sales - NBL",
+    "Warehouse - NBL",
+    "Super User",
+    "Sales - HBL Base - Rawalpindi",
+    "Quality Control - Bplus",
+    "Market Research Development - HBL",
+    "Finance - NBL",
+    "Audit - NBL",
+    "Bulk Water - HBL",
+    "GTM - HBL",
+    "People & Culture",
+    "Quality Control - HBL",
+    "Sales - HBL OUT",
+    "Tax - HBL",
+    "Utilities - HBL",
+    "Sales - HBL OUT - Abbottabad",
+    "Quality Control - NBL",
+    "Procurement - HBL",
+    "Human Resource - HBL",
+    "CEO Secretariat - HBL"
+  ],
+  "updatedAt": {
+    "$date": "2026-01-30T05:40:26.301Z"
+  },
+  "username": "super.user"
+},
+{
+  "_id": {
+    "$oid": "697d922cb328d679f16ca4a5"
+  },
+  "userId": "697b437085beb140647952c2",
+  "createdAt": {
+    "$date": "2026-01-31T05:25:00.877Z"
+  },
+  "departments": [
+    "Sales - NBL",
+    "Sales - NBL - Base",
+    "Sales - NBL - Central",
+    "Sales - NBL - North",
+    "Sales - NBL - South"
+  ],
+  "updatedAt": {
+    "$date": "2026-01-31T05:25:00.877Z"
+  },
+  "username": "abdul.basit@pepsinbl.com"
+},
+{
+  "_id": {
+    "$oid": "697d9350b328d679f16ca4a6"
+  },
+  "userId": "697d92cea535d2ea3ef0d193",
+  "createdAt": {
+    "$date": "2026-01-31T05:29:52.367Z"
+  },
+  "departments": [
+    "Sales - NBL",
+    "Sales - NBL - Base",
+    "Sales - NBL - Central",
+    "Sales - NBL - North",
+    "Sales - NBL - South"
+  ],
+  "updatedAt": {
+    "$date": "2026-01-31T05:29:52.367Z"
+  },
+  "username": "zahoor.hassan@pepsinbl.com"
+}]

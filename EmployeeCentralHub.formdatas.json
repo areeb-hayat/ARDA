@@ -3840,11 +3840,11 @@
   "joiningDate": "",
   "personnelArea": "",
   "employeeNumber": "2158",
-  "status": "pending",
+  "status": "approved",
   "isApproved": true,
   "createdAt": "2026-01-28T07:29:47.274977Z",
   "updatedAt": {
-    "$date": "2026-01-30T04:52:15.633Z"
+    "$date": "2026-02-04T05:25:46.342Z"
   },
   "__v": 0
 },
@@ -4296,7 +4296,7 @@
   "isApproved": true,
   "createdAt": "2026-01-28T07:29:47.274977Z",
   "updatedAt": {
-    "$date": "2026-01-30T04:50:09.250Z"
+    "$date": "2026-02-11T06:17:01.718Z"
   },
   "__v": 0,
   "isExecutive": true
@@ -5727,7 +5727,7 @@
   "isDeptHead": true,
   "basicDetails": {
     "title": "Mr",
-    "name": "Jahanzaib .",
+    "name": "Jahanzaib Awan",
     "fatherName": "",
     "gender": "Male",
     "religion": "",
@@ -5788,7 +5788,7 @@
   "isApproved": true,
   "createdAt": "2026-01-28T07:29:47.274977Z",
   "updatedAt": {
-    "$date": "2026-01-30T04:53:21.153Z"
+    "$date": "2026-02-04T05:40:50.549Z"
   },
   "__v": 0
 },
@@ -6020,9 +6020,9 @@
   },
   "username": "mujtaba.ahmed@pepsiisb.com",
   "password": "$2b$10$Vs.sz5p50EhUNpnRDBEyh.RT4.BOpwQoUkjMf5dBywLkpkz/F3Rnq",
-  "department": "Utilities - HBL",
+  "department": "E&I - HBL",
   "title": "Manager Electrical & Instrumentation",
-  "isDeptHead": false,
+  "isDeptHead": true,
   "basicDetails": {
     "title": "Mr",
     "name": "Muhammad Mujtaba Ahmad",
@@ -6085,7 +6085,9 @@
   "status": "approved",
   "isApproved": true,
   "createdAt": "2026-01-28T07:29:47.274977Z",
-  "updatedAt": "2026-01-28T07:29:47.274977Z",
+  "updatedAt": {
+    "$date": "2026-02-11T06:13:23.599Z"
+  },
   "__v": 0
 },
 {
@@ -6094,7 +6096,7 @@
   },
   "username": "qamar.majeed@pepsiisb.com",
   "password": "$2b$10$Vs.sz5p50EhUNpnRDBEyh.RT4.BOpwQoUkjMf5dBywLkpkz/F3Rnq",
-  "department": "Utilities - HBL",
+  "department": "E&I - HBL",
   "title": "Electrical & Instrumentation Executive",
   "isDeptHead": false,
   "basicDetails": {
@@ -6159,81 +6161,9 @@
   "status": "approved",
   "isApproved": true,
   "createdAt": "2026-01-28T07:29:47.274977Z",
-  "updatedAt": "2026-01-28T07:29:47.274977Z",
-  "__v": 0
-},
-{
-  "_id": {
-    "$oid": "697b437085beb14064795293"
+  "updatedAt": {
+    "$date": "2026-02-11T06:14:16.317Z"
   },
-  "username": "umar.javaid@swsugar.com.pk",
-  "password": "$2b$10$Vs.sz5p50EhUNpnRDBEyh.RT4.BOpwQoUkjMf5dBywLkpkz/F3Rnq",
-  "department": "Utilities - HBL",
-  "title": "Civil Engineer",
-  "isDeptHead": false,
-  "basicDetails": {
-    "title": "Mr",
-    "name": "Umar Javaid",
-    "fatherName": "",
-    "gender": "Male",
-    "religion": "",
-    "nationality": "PK",
-    "age": "0",
-    "maritalStatus": "",
-    "profileImage": "/default-profile.jpg"
-  },
-  "identification": {
-    "CNIC": "",
-    "birthCountry": "PK",
-    "dateOfBirth": "",
-    "drivingLicense": "",
-    "drivingLicenseNumber": "",
-    "dateOfMarriage": "",
-    "bloodGroup": "",
-    "EOBI": ""
-  },
-  "contactInformation": {
-    "contactNumber": "",
-    "telephoneNumber": "",
-    "email": "umar.javaid@swsugar.com.pk",
-    "addressLine1": "",
-    "addressLine2": "",
-    "postalCode": "",
-    "district": "",
-    "country": "PK",
-    "emergencyNumber": "",
-    "emergencyRelation": ""
-  },
-  "educationalDetails": [],
-  "certifications": [],
-  "employmentHistory": [],
-  "relatives": [],
-  "parents": {
-    "father": {
-      "name": "",
-      "DOB": "",
-      "CNIC": ""
-    },
-    "mother": {
-      "name": "",
-      "DOB": "",
-      "CNIC": ""
-    }
-  },
-  "dependants": {
-    "nominees": [],
-    "spouses": [],
-    "children": []
-  },
-  "employeeGroup": "",
-  "employeeSubGroup": "",
-  "joiningDate": "",
-  "personnelArea": "",
-  "employeeNumber": "2355",
-  "status": "approved",
-  "isApproved": true,
-  "createdAt": "2026-01-28T07:29:47.274977Z",
-  "updatedAt": "2026-01-28T07:29:47.274977Z",
   "__v": 0
 },
 {
@@ -7811,7 +7741,7 @@
   },
   "username": "riaz.hussain@pepsiisb.com",
   "password": "$2b$10$Vs.sz5p50EhUNpnRDBEyh.RT4.BOpwQoUkjMf5dBywLkpkz/F3Rnq",
-  "department": "Utilities - HBL",
+  "department": "E&I - HBL",
   "title": "Electrical & Instrumentation Executive",
   "isDeptHead": false,
   "basicDetails": {
@@ -7876,7 +7806,9 @@
   "status": "approved",
   "isApproved": true,
   "createdAt": "2026-01-29T05:07:05.771249Z",
-  "updatedAt": "2026-01-29T05:07:05.771249Z",
+  "updatedAt": {
+    "$date": "2026-02-11T06:14:21.029Z"
+  },
   "__v": 0
 },
 {
@@ -10284,7 +10216,7 @@
   "username": "abu.hurairah@pepsinbl.com",
   "password": "$2b$10$Vs.sz5p50EhUNpnRDBEyh.RT4.BOpwQoUkjMf5dBywLkpkz/F3Rnq",
   "department": "Sales - NBL - South",
-  "title": "Sales Manager",
+  "title": "Regional Sales Manager",
   "isDeptHead": true,
   "basicDetails": {
     "title": "Mr",
@@ -10349,7 +10281,7 @@
   "isApproved": true,
   "createdAt": "2026-01-29T05:07:05.771249Z",
   "updatedAt": {
-    "$date": "2026-01-31T05:23:04.167Z"
+    "$date": "2026-02-04T05:41:01.839Z"
   },
   "__v": 0
 },
