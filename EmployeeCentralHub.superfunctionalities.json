@@ -10804,7 +10804,8 @@
   "accessControl": {
     "type": "departments",
     "departments": [
-      "People & Culture"
+      "People & Culture",
+      "People and Culture"
     ],
     "users": [],
     "excludedUsers": [
@@ -10819,7 +10820,7 @@
     "$date": "2026-02-03T05:41:22.835Z"
   },
   "updatedAt": {
-    "$date": "2026-02-03T05:41:22.835Z"
+    "$date": "2026-02-12T08:13:22.174Z"
   },
   "__v": 0
 },
@@ -12944,20 +12945,19 @@
         }
       },
       {
-        "id": "node-1770183080576",
+        "id": "node-1770871424042",
         "type": "employee",
         "position": {
-          "x": 880,
+          "x": 960,
           "y": 120
         },
         "data": {
           "label": "Parallel Group",
-          "employeeId": "697b437085beb14064795246",
+          "employeeId": "697b437085beb1406479525a",
           "nodeType": "parallel",
-          "groupLead": "697b437085beb14064795246",
+          "groupLead": "697b437085beb1406479525a",
           "groupMembers": [
-            "697b437085beb14064795265",
-            "697b437085beb1406479524e"
+            "697b437085beb14064795247"
           ]
         }
       }
@@ -12974,13 +12974,13 @@
         "target": "node-1770183043216"
       },
       {
-        "id": "edge-1770183083652",
+        "id": "edge-1770871426756",
         "source": "node-1770183043216",
-        "target": "node-1770183080576"
+        "target": "node-1770871424042"
       },
       {
-        "id": "edge-1770183085373",
-        "source": "node-1770183080576",
+        "id": "edge-1770871428531",
+        "source": "node-1770871424042",
         "target": "end"
       }
     ]
@@ -13027,7 +13027,7 @@
     "$date": "2026-02-04T05:31:36.527Z"
   },
   "updatedAt": {
-    "$date": "2026-02-04T05:31:36.527Z"
+    "$date": "2026-02-12T04:43:53.935Z"
   },
   "__v": 0
 },
@@ -16791,6 +16791,823 @@
   },
   "updatedAt": {
     "$date": "2026-02-04T06:32:38.466Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "698d8051270ef6b1e717244d"
+  },
+  "name": "Exit Interviews",
+  "description": "",
+  "workflow": {
+    "nodes": [
+      {
+        "id": "start",
+        "type": "start",
+        "position": {
+          "x": 80,
+          "y": 240
+        },
+        "data": {
+          "label": "Ticket Raised",
+          "nodeType": "sequential",
+          "groupMembers": []
+        }
+      },
+      {
+        "id": "end",
+        "type": "end",
+        "position": {
+          "x": 880,
+          "y": 240
+        },
+        "data": {
+          "label": "Resolved",
+          "nodeType": "sequential",
+          "groupMembers": []
+        }
+      },
+      {
+        "id": "node-1770880894408",
+        "type": "employee",
+        "position": {
+          "x": 280,
+          "y": 160
+        },
+        "data": {
+          "label": "Parallel Group",
+          "employeeId": "697b437085beb140647952a0",
+          "nodeType": "parallel",
+          "groupLead": "697b437085beb140647952a0",
+          "groupMembers": [
+            "697b437085beb140647952a1"
+          ]
+        }
+      },
+      {
+        "id": "node-1770880911784",
+        "type": "employee",
+        "position": {
+          "x": 600,
+          "y": 120
+        },
+        "data": {
+          "label": "Tahreem Fatima",
+          "employeeId": "697b437085beb1406479525b",
+          "employeeName": "Tahreem Fatima",
+          "employeeTitle": "Head of People & Culture",
+          "employeeAvatar": "/default-profile.jpg",
+          "nodeType": "sequential",
+          "groupMembers": []
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "edge-1770880896219",
+        "source": "start",
+        "target": "node-1770880894408"
+      },
+      {
+        "id": "edge-1770880913687",
+        "source": "node-1770880894408",
+        "target": "node-1770880911784"
+      },
+      {
+        "id": "edge-1770880916922",
+        "source": "node-1770880911784",
+        "target": "end"
+      }
+    ]
+  },
+  "formSchema": {
+    "fields": [
+      {
+        "id": "field-1770881018718",
+        "type": "text",
+        "label": "Name",
+        "placeholder": "Employee Name",
+        "required": true,
+        "options": [],
+        "order": 0
+      },
+      {
+        "id": "field-1770881035304",
+        "type": "text",
+        "label": "Designation",
+        "placeholder": "Designation",
+        "required": true,
+        "options": [],
+        "order": 1
+      },
+      {
+        "id": "field-1770881044876",
+        "type": "text",
+        "label": "Department",
+        "placeholder": "Department",
+        "required": true,
+        "options": [],
+        "order": 2
+      },
+      {
+        "id": "field-1770881054664",
+        "type": "date",
+        "label": "Employee Leaving Date",
+        "placeholder": "Employee Leaving Date",
+        "required": true,
+        "options": [],
+        "order": 3
+      },
+      {
+        "id": "default-description",
+        "type": "textarea",
+        "label": "Description",
+        "placeholder": "Describe the issue in detail",
+        "required": false,
+        "options": [],
+        "order": 4
+      },
+      {
+        "id": "default-attachments",
+        "type": "file",
+        "label": "Attachments",
+        "placeholder": "Upload relevant files",
+        "required": false,
+        "options": [],
+        "order": 5
+      }
+    ],
+    "useDefaultFields": false,
+    "_id": {
+      "$oid": "698d8051270ef6b1e717244e"
+    }
+  },
+  "accessControl": {
+    "type": "departments",
+    "departments": [
+      "Human Resource - HBL"
+    ],
+    "users": [],
+    "excludedUsers": []
+  },
+  "createdBy": {
+    "userId": "697b437085beb14064795242",
+    "name": "super.user"
+  },
+  "createdAt": {
+    "$date": "2026-02-12T07:25:05.469Z"
+  },
+  "updatedAt": {
+    "$date": "2026-02-12T07:25:05.469Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "698d8129270ef6b1e71724a2"
+  },
+  "name": "Payment Voucher",
+  "description": "Production - HBL",
+  "workflow": {
+    "nodes": [
+      {
+        "id": "start",
+        "type": "start",
+        "position": {
+          "x": 80,
+          "y": 240
+        },
+        "data": {
+          "label": "Ticket Raised",
+          "nodeType": "sequential",
+          "groupMembers": []
+        }
+      },
+      {
+        "id": "end",
+        "type": "end",
+        "position": {
+          "x": 880,
+          "y": 240
+        },
+        "data": {
+          "label": "Resolved",
+          "nodeType": "sequential",
+          "groupMembers": []
+        }
+      },
+      {
+        "id": "node-1770881263419",
+        "type": "employee",
+        "position": {
+          "x": 280,
+          "y": 240
+        },
+        "data": {
+          "label": "Moonis Eitezaz Ahmed",
+          "employeeId": "697b437085beb14064795279",
+          "employeeName": "Moonis Eitezaz Ahmed",
+          "employeeTitle": "General Manager Operations",
+          "employeeAvatar": "/default-profile.jpg",
+          "nodeType": "sequential",
+          "groupMembers": []
+        }
+      },
+      {
+        "id": "node-1770881268769",
+        "type": "employee",
+        "position": {
+          "x": 560,
+          "y": 160
+        },
+        "data": {
+          "label": "MUHAMMAD BASHIR",
+          "employeeId": "697b437085beb140647952bc",
+          "employeeName": "MUHAMMAD BASHIR",
+          "employeeTitle": "Senior Finance Manager",
+          "employeeAvatar": "/default-profile.jpg",
+          "nodeType": "sequential",
+          "groupMembers": []
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "edge-1770881264735",
+        "source": "start",
+        "target": "node-1770881263419"
+      },
+      {
+        "id": "edge-1770881270462",
+        "source": "node-1770881263419",
+        "target": "node-1770881268769"
+      },
+      {
+        "id": "edge-1770881272232",
+        "source": "node-1770881268769",
+        "target": "end"
+      }
+    ]
+  },
+  "formSchema": {
+    "fields": [
+      {
+        "id": "default-title",
+        "type": "text",
+        "label": "Voucher Title",
+        "placeholder": "Enter ticket title",
+        "required": true,
+        "options": [],
+        "order": 0
+      },
+      {
+        "id": "field-1770881293825",
+        "type": "table",
+        "label": "Particulars",
+        "required": true,
+        "options": [],
+        "tableConfig": {
+          "columns": [
+            {
+              "id": "col1",
+              "label": "Date",
+              "type": "date"
+            },
+            {
+              "id": "col2",
+              "label": "Particular",
+              "type": "text"
+            },
+            {
+              "id": "col-1770881306723",
+              "label": "Amount",
+              "type": "number"
+            }
+          ],
+          "minRows": 1,
+          "maxRows": 10
+        },
+        "order": 1
+      },
+      {
+        "id": "default-attachments",
+        "type": "file",
+        "label": "Attachments",
+        "placeholder": "Upload relevant files",
+        "required": false,
+        "options": [],
+        "order": 2
+      }
+    ],
+    "useDefaultFields": false,
+    "_id": {
+      "$oid": "698d8129270ef6b1e71724a3"
+    }
+  },
+  "accessControl": {
+    "type": "departments",
+    "departments": [
+      "Production - HBL"
+    ],
+    "users": [],
+    "excludedUsers": [
+      "697b437085beb14064795279"
+    ]
+  },
+  "createdBy": {
+    "userId": "697b437085beb14064795242",
+    "name": "super.user"
+  },
+  "createdAt": {
+    "$date": "2026-02-12T07:28:41.346Z"
+  },
+  "updatedAt": {
+    "$date": "2026-02-12T07:28:41.346Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "698d87a9270ef6b1e71724be"
+  },
+  "name": "Job Fair",
+  "description": "",
+  "workflow": {
+    "nodes": [
+      {
+        "id": "start",
+        "type": "start",
+        "position": {
+          "x": 80,
+          "y": 240
+        },
+        "data": {
+          "label": "Ticket Raised",
+          "nodeType": "sequential",
+          "groupMembers": []
+        }
+      },
+      {
+        "id": "end",
+        "type": "end",
+        "position": {
+          "x": 880,
+          "y": 240
+        },
+        "data": {
+          "label": "Resolved",
+          "nodeType": "sequential",
+          "groupMembers": []
+        }
+      },
+      {
+        "id": "node-1770882396956",
+        "type": "employee",
+        "position": {
+          "x": 440,
+          "y": 240
+        },
+        "data": {
+          "label": "Parallel Group",
+          "employeeId": "697b437085beb1406479526c",
+          "nodeType": "parallel",
+          "groupLead": "697b437085beb1406479526c",
+          "groupMembers": [
+            "697b437085beb14064795269"
+          ]
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "edge-1770882570811",
+        "source": "start",
+        "target": "node-1770882396956"
+      },
+      {
+        "id": "edge-1770882586457",
+        "source": "node-1770882396956",
+        "target": "end"
+      }
+    ]
+  },
+  "formSchema": {
+    "fields": [
+      {
+        "id": "default-title",
+        "type": "text",
+        "label": "University Name",
+        "placeholder": "University Name",
+        "required": true,
+        "options": [],
+        "order": 0
+      },
+      {
+        "id": "field-1770882086161",
+        "type": "textarea",
+        "label": "Location/Campus",
+        "placeholder": "Location/Campus",
+        "required": true,
+        "options": [],
+        "order": 1
+      },
+      {
+        "id": "field-1770882128649",
+        "type": "date",
+        "label": "Event Date",
+        "placeholder": "Event Date",
+        "required": true,
+        "options": [],
+        "order": 2
+      },
+      {
+        "id": "field-1770882149948",
+        "type": "table",
+        "label": "Particulars",
+        "required": true,
+        "options": [],
+        "tableConfig": {
+          "columns": [
+            {
+              "id": "col1",
+              "label": "Description",
+              "type": "text"
+            },
+            {
+              "id": "col2",
+              "label": "Quality",
+              "type": "number"
+            }
+          ],
+          "minRows": 1,
+          "maxRows": 10
+        },
+        "order": 3
+      },
+      {
+        "id": "default-attachments",
+        "type": "file",
+        "label": "Attachments",
+        "placeholder": "Upload relevant files",
+        "required": false,
+        "options": [],
+        "order": 4
+      }
+    ],
+    "useDefaultFields": false,
+    "_id": {
+      "$oid": "698d87a9270ef6b1e71724bf"
+    }
+  },
+  "accessControl": {
+    "type": "departments",
+    "departments": [
+      "Human Resource - HBL"
+    ],
+    "users": [],
+    "excludedUsers": []
+  },
+  "createdBy": {
+    "userId": "697b437085beb14064795242",
+    "name": "super.user"
+  },
+  "createdAt": {
+    "$date": "2026-02-12T07:56:25.712Z"
+  },
+  "updatedAt": {
+    "$date": "2026-02-12T07:56:25.712Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "698d887b270ef6b1e71724c3"
+  },
+  "name": "Employee Engagement Activities",
+  "description": "",
+  "workflow": {
+    "nodes": [
+      {
+        "id": "start",
+        "type": "start",
+        "position": {
+          "x": 80,
+          "y": 240
+        },
+        "data": {
+          "label": "Ticket Raised",
+          "nodeType": "sequential",
+          "groupMembers": []
+        }
+      },
+      {
+        "id": "end",
+        "type": "end",
+        "position": {
+          "x": 880,
+          "y": 240
+        },
+        "data": {
+          "label": "Resolved",
+          "nodeType": "sequential",
+          "groupMembers": []
+        }
+      },
+      {
+        "id": "node-1770883032049",
+        "type": "employee",
+        "position": {
+          "x": 440,
+          "y": 320
+        },
+        "data": {
+          "label": "Parallel Group",
+          "employeeId": "697b437085beb1406479526c",
+          "nodeType": "parallel",
+          "groupLead": "697b437085beb1406479526c",
+          "groupMembers": [
+            "697b437085beb14064795269"
+          ]
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "edge-1770883033868",
+        "source": "start",
+        "target": "node-1770883032049"
+      },
+      {
+        "id": "edge-1770883035452",
+        "source": "node-1770883032049",
+        "target": "end"
+      }
+    ]
+  },
+  "formSchema": {
+    "fields": [
+      {
+        "id": "default-title",
+        "type": "text",
+        "label": "Event Title",
+        "placeholder": "Enter ticket title",
+        "required": true,
+        "options": [],
+        "order": 0
+      },
+      {
+        "id": "default-description",
+        "type": "textarea",
+        "label": "Event Description",
+        "placeholder": "Describe the event in detail",
+        "required": true,
+        "options": [],
+        "order": 1
+      },
+      {
+        "id": "field-1770883180243",
+        "type": "textarea",
+        "label": "Location",
+        "placeholder": "Location",
+        "required": true,
+        "options": [],
+        "order": 2
+      },
+      {
+        "id": "field-1770883052697",
+        "type": "date",
+        "label": "Event Date",
+        "placeholder": "Event Date",
+        "required": true,
+        "options": [],
+        "order": 3
+      },
+      {
+        "id": "field-1770883135834",
+        "type": "date",
+        "label": "Requirement Delivery Date",
+        "placeholder": "Requirement Delivery Date",
+        "required": true,
+        "options": [],
+        "order": 4
+      },
+      {
+        "id": "field-1770883075276",
+        "type": "table",
+        "label": "Particulars",
+        "required": true,
+        "options": [],
+        "tableConfig": {
+          "columns": [
+            {
+              "id": "col1",
+              "label": "Particular",
+              "type": "text"
+            },
+            {
+              "id": "col2",
+              "label": "Quantity",
+              "type": "number"
+            }
+          ],
+          "minRows": 1,
+          "maxRows": 10
+        },
+        "order": 5
+      },
+      {
+        "id": "field-1770883103073",
+        "type": "file",
+        "label": "Artworks",
+        "placeholder": "Artworks",
+        "required": true,
+        "options": [],
+        "order": 6
+      }
+    ],
+    "useDefaultFields": false,
+    "_id": {
+      "$oid": "698d887b270ef6b1e71724c4"
+    }
+  },
+  "accessControl": {
+    "type": "departments",
+    "departments": [
+      "People and Culture"
+    ],
+    "users": [],
+    "excludedUsers": []
+  },
+  "createdBy": {
+    "userId": "697b437085beb14064795242",
+    "name": "super.user"
+  },
+  "createdAt": {
+    "$date": "2026-02-12T07:59:55.856Z"
+  },
+  "updatedAt": {
+    "$date": "2026-02-12T07:59:55.856Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "698d893b270ef6b1e71724c8"
+  },
+  "name": "Branding",
+  "description": "",
+  "workflow": {
+    "nodes": [
+      {
+        "id": "start",
+        "type": "start",
+        "position": {
+          "x": 80,
+          "y": 240
+        },
+        "data": {
+          "label": "Ticket Raised",
+          "nodeType": "sequential",
+          "groupMembers": []
+        }
+      },
+      {
+        "id": "end",
+        "type": "end",
+        "position": {
+          "x": 880,
+          "y": 240
+        },
+        "data": {
+          "label": "Resolved",
+          "nodeType": "sequential",
+          "groupMembers": []
+        }
+      },
+      {
+        "id": "node-1770883308967",
+        "type": "employee",
+        "position": {
+          "x": 400,
+          "y": 240
+        },
+        "data": {
+          "label": "Parallel Group",
+          "employeeId": "697b437085beb1406479526c",
+          "nodeType": "parallel",
+          "groupLead": "697b437085beb1406479526c",
+          "groupMembers": [
+            "697b437085beb14064795269"
+          ]
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "edge-1770883310601",
+        "source": "start",
+        "target": "node-1770883308967"
+      },
+      {
+        "id": "edge-1770883312835",
+        "source": "node-1770883308967",
+        "target": "end"
+      }
+    ]
+  },
+  "formSchema": {
+    "fields": [
+      {
+        "id": "field-1770883638732",
+        "type": "text",
+        "label": "Region",
+        "placeholder": "Region",
+        "required": true,
+        "options": [],
+        "order": 0
+      },
+      {
+        "id": "field-1770883803083",
+        "type": "number",
+        "label": "Number of Outlets",
+        "placeholder": "Number of Outlets",
+        "required": true,
+        "options": [],
+        "order": 1
+      },
+      {
+        "id": "field-1770883498633",
+        "type": "dropdown",
+        "label": "Branding Type",
+        "placeholder": "Branding Type",
+        "required": true,
+        "options": [
+          "In Store",
+          "Outdoor",
+          "POSM",
+          "Dining Tools"
+        ],
+        "order": 2
+      },
+      {
+        "id": "default-description",
+        "type": "textarea",
+        "label": "Description",
+        "placeholder": "Describe in detail",
+        "required": true,
+        "options": [],
+        "order": 3
+      },
+      {
+        "id": "field-1770883749601",
+        "type": "file",
+        "label": "Upload Requirements",
+        "placeholder": "Upload Requirements",
+        "required": true,
+        "options": [],
+        "order": 4
+      },
+      {
+        "id": "default-attachments",
+        "type": "file",
+        "label": "Shop Front Picture",
+        "placeholder": "Upload relevant files",
+        "required": true,
+        "options": [],
+        "order": 5
+      }
+    ],
+    "useDefaultFields": false,
+    "_id": {
+      "$oid": "698d8b10270ef6b1e71724d2"
+    }
+  },
+  "accessControl": {
+    "type": "departments",
+    "departments": [
+      "Sales - HBL Base",
+      "Sales - HBL Base - Islamabad",
+      "Sales - HBL Base - RWP OUT",
+      "Sales - HBL Base - Rawalpindi",
+      "Sales - HBL OUT",
+      "Sales - HBL OUT - Abbottabad",
+      "Sales - HBL OUT - Attock",
+      "Sales - HBL OUT - Kashmir",
+      "Key Accounts - HBL"
+    ],
+    "users": [],
+    "excludedUsers": []
+  },
+  "createdBy": {
+    "userId": "697b437085beb14064795242",
+    "name": "super.user"
+  },
+  "createdAt": {
+    "$date": "2026-02-12T08:03:07.055Z"
+  },
+  "updatedAt": {
+    "$date": "2026-02-12T08:11:31.681Z"
   },
   "__v": 0
 }]

@@ -952,4 +952,329 @@
     "$date": "2026-01-31T06:07:42.926Z"
   },
   "__v": 0
+},
+{
+  "_id": {
+    "$oid": "698d67a623f1d66249f9a363"
+  },
+  "name": "FG Material Creation",
+  "description": "",
+  "department": "Information Technology - HBL",
+  "workflow": {
+    "nodes": [
+      {
+        "id": "start",
+        "type": "start",
+        "position": {
+          "x": 80,
+          "y": 240
+        },
+        "data": {
+          "label": "Ticket Raised",
+          "nodeType": "sequential",
+          "groupMembers": []
+        }
+      },
+      {
+        "id": "end",
+        "type": "end",
+        "position": {
+          "x": 880,
+          "y": 240
+        },
+        "data": {
+          "label": "Resolved",
+          "nodeType": "sequential",
+          "groupMembers": []
+        }
+      },
+      {
+        "id": "node-1770874752520",
+        "type": "employee",
+        "position": {
+          "x": 320,
+          "y": 280
+        },
+        "data": {
+          "label": "Hassan Farooq",
+          "employeeId": "697b437085beb1406479529c",
+          "employeeName": "Hassan Farooq",
+          "employeeTitle": "SAP MM Executive",
+          "employeeAvatar": "/default-profile.jpg",
+          "nodeType": "sequential",
+          "groupMembers": []
+        }
+      },
+      {
+        "id": "node-1770874760764",
+        "type": "employee",
+        "position": {
+          "x": 560,
+          "y": 120
+        },
+        "data": {
+          "label": "Muhammad Arshad Khan",
+          "employeeId": "697b437085beb14064795268",
+          "employeeName": "Muhammad Arshad Khan",
+          "employeeTitle": "Assistant Manager SAP - SD",
+          "employeeAvatar": "/default-profile.jpg",
+          "nodeType": "sequential",
+          "groupMembers": []
+        }
+      },
+      {
+        "id": "node-1770874769843",
+        "type": "employee",
+        "position": {
+          "x": 760,
+          "y": 440
+        },
+        "data": {
+          "label": "Ilyas Nawaz",
+          "employeeId": "697b437085beb14064795288",
+          "employeeName": "Ilyas Nawaz",
+          "employeeTitle": "Deputy Manager SAP - PP/PM/QM",
+          "employeeAvatar": "/default-profile.jpg",
+          "nodeType": "sequential",
+          "groupMembers": []
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "edge-1770874755711",
+        "source": "start",
+        "target": "node-1770874752520"
+      },
+      {
+        "id": "edge-1770874763319",
+        "source": "node-1770874752520",
+        "target": "node-1770874760764"
+      },
+      {
+        "id": "edge-1770874771981",
+        "source": "node-1770874760764",
+        "target": "node-1770874769843"
+      },
+      {
+        "id": "edge-1770874774012",
+        "source": "node-1770874769843",
+        "target": "end"
+      }
+    ]
+  },
+  "formSchema": {
+    "fields": [
+      {
+        "id": "default-title",
+        "type": "text",
+        "label": "Title",
+        "placeholder": "Enter ticket title",
+        "required": true,
+        "options": [],
+        "order": 0
+      },
+      {
+        "id": "default-description",
+        "type": "textarea",
+        "label": "Description",
+        "placeholder": "Describe the issue in detail",
+        "required": true,
+        "options": [],
+        "order": 1
+      },
+      {
+        "id": "default-priority",
+        "type": "dropdown",
+        "label": "Priority",
+        "required": true,
+        "options": [
+          "Low",
+          "Medium",
+          "High"
+        ],
+        "order": 2
+      },
+      {
+        "id": "default-priority-reason",
+        "type": "textarea",
+        "label": "Reason for High Priority",
+        "placeholder": "Explain why this is high priority",
+        "required": true,
+        "options": [],
+        "order": 3
+      },
+      {
+        "id": "default-attachments",
+        "type": "file",
+        "label": "Attachments",
+        "placeholder": "Upload relevant files",
+        "required": false,
+        "options": [],
+        "order": 4
+      }
+    ],
+    "useDefaultFields": false,
+    "_id": {
+      "$oid": "698d67a623f1d66249f9a364"
+    }
+  },
+  "isActive": true,
+  "createdAt": {
+    "$date": "2026-02-12T05:39:50.753Z"
+  },
+  "updatedAt": {
+    "$date": "2026-02-12T05:39:50.753Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "698d7f34270ef6b1e7172436"
+  },
+  "name": "Employee Recognition",
+  "description": "",
+  "department": "People and Culture",
+  "workflow": {
+    "nodes": [
+      {
+        "id": "start",
+        "type": "start",
+        "position": {
+          "x": 80,
+          "y": 240
+        },
+        "data": {
+          "label": "Ticket Raised",
+          "nodeType": "sequential",
+          "groupMembers": []
+        }
+      },
+      {
+        "id": "end",
+        "type": "end",
+        "position": {
+          "x": 1160,
+          "y": 240
+        },
+        "data": {
+          "label": "Resolved",
+          "nodeType": "sequential",
+          "groupMembers": []
+        }
+      },
+      {
+        "id": "node-1770880682088",
+        "type": "employee",
+        "position": {
+          "x": 320,
+          "y": 200
+        },
+        "data": {
+          "label": "Parallel Group",
+          "employeeId": "697b437085beb140647952a1",
+          "nodeType": "parallel",
+          "groupLead": "697b437085beb140647952a1",
+          "groupMembers": [
+            "697b437085beb140647952a0"
+          ]
+        }
+      },
+      {
+        "id": "node-1770880691110",
+        "type": "employee",
+        "position": {
+          "x": 720,
+          "y": 280
+        },
+        "data": {
+          "label": "Tahreem Fatima",
+          "employeeId": "697b437085beb1406479525b",
+          "employeeName": "Tahreem Fatima",
+          "employeeTitle": "Head of People & Culture",
+          "employeeAvatar": "/default-profile.jpg",
+          "nodeType": "sequential",
+          "groupMembers": []
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "edge-1770880683886",
+        "source": "start",
+        "target": "node-1770880682088"
+      },
+      {
+        "id": "edge-1770880696391",
+        "source": "node-1770880682088",
+        "target": "node-1770880691110"
+      },
+      {
+        "id": "edge-1770880698472",
+        "source": "node-1770880691110",
+        "target": "end"
+      }
+    ]
+  },
+  "formSchema": {
+    "fields": [
+      {
+        "id": "field-1770880766597",
+        "type": "text",
+        "label": "Name",
+        "placeholder": "Employee Name",
+        "required": true,
+        "options": [],
+        "order": 0
+      },
+      {
+        "id": "field-1770880775258",
+        "type": "text",
+        "label": "Designation",
+        "placeholder": "Designation",
+        "required": true,
+        "options": [],
+        "order": 1
+      },
+      {
+        "id": "field-1770880786471",
+        "type": "text",
+        "label": "Department",
+        "placeholder": "Department",
+        "required": true,
+        "options": [],
+        "order": 2
+      },
+      {
+        "id": "default-description",
+        "type": "textarea",
+        "label": "Description",
+        "placeholder": "Describe the issue in detail",
+        "required": true,
+        "options": [],
+        "order": 3
+      },
+      {
+        "id": "default-attachments",
+        "type": "file",
+        "label": "Attachments",
+        "placeholder": "Upload relevant files",
+        "required": false,
+        "options": [],
+        "order": 4
+      }
+    ],
+    "useDefaultFields": false,
+    "_id": {
+      "$oid": "698d7f34270ef6b1e7172437"
+    }
+  },
+  "isActive": true,
+  "createdAt": {
+    "$date": "2026-02-12T07:20:20.381Z"
+  },
+  "updatedAt": {
+    "$date": "2026-02-12T07:20:20.381Z"
+  },
+  "__v": 0
 }]
